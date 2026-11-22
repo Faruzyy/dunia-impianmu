@@ -5,46 +5,155 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Dunia Impianmu · Jalan-Jalan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --gold: #ffd84a; --ink: #1d2050; --panel: rgba(18, 22, 60, 0.78); }
+  :root { --gold: #ffd84a; --gold2: #f0b400; --ink: #1d2050; --panel: rgba(18, 22, 60, 0.82); --navy: #171b45; --navy2: #232867; --navy3: #2e3480; --lav: #cecbf6; --lav2: #9d97e6; --cream: #fff6d6; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #8fcaff; font-family: 'Fredoka', system-ui, sans-serif; color: #fff; touch-action: none; user-select: none; -webkit-user-select: none; }
+  button { font-family: inherit; }
   canvas#c { display: block; width: 100vw; height: 100vh; height: 100dvh; }
   .hud { position: fixed; left: max(12px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
   .day { align-self: flex-start; background: var(--gold); color: #2a1d00; font-weight: 700; padding: 4px 14px; border-radius: 99px; box-shadow: 0 3px 0 #b8860b; font-size: 18px; }
   .title { font-weight: 700; font-size: 20px; text-shadow: 0 2px 0 var(--ink), 0 0 8px rgba(0,0,0,0.35); }
   .stats { position: fixed; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); background: var(--panel); border-radius: 14px; padding: 8px 12px; font-size: 15px; line-height: 1.5; pointer-events: none; min-width: 120px; }
   .stats b { color: var(--gold); float: right; margin-left: 12px; }
-  #mini { position: fixed; right: max(12px, env(safe-area-inset-right)); top: calc(max(12px, env(safe-area-inset-top)) + 106px); width: 130px; height: 130px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 3px 10px rgba(0,0,0,0.25); pointer-events: none; background: #8fd06b; }
-  .info { position: fixed; left: 50%; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 8px); transform: translate(-50%, 20px); opacity: 0; transition: opacity .25s, transform .25s; background: #fff; color: var(--ink); border-radius: 18px; padding: 10px 18px 12px; text-align: center; max-width: min(92vw, 460px); box-shadow: 0 5px 0 rgba(0,0,0,0.2); pointer-events: none; }
+  #mini { position: fixed; right: max(12px, env(safe-area-inset-right)); top: calc(max(12px, env(safe-area-inset-top)) + 106px); width: 130px; height: 130px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 3px 10px rgba(0,0,0,0.25); background: #8fd06b; cursor: zoom-in; }
+  .tools { position: fixed; right: max(12px, env(safe-area-inset-right)); top: calc(max(12px, env(safe-area-inset-top)) + 248px); display: flex; flex-direction: column; gap: 8px; }
+  .tools button { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--panel); color: #fff; font-size: 20px; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.25); display: grid; place-items: center; padding: 0; }
+  .tools button:active { transform: scale(0.92); }
+  .info { position: fixed; left: 50%; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 8px); transform: translate(-50%, 20px); opacity: 0; transition: opacity .25s, transform .25s; background: linear-gradient(180deg, var(--navy2), var(--navy)); color: var(--cream); border: 2px solid var(--gold); border-radius: 18px; padding: 10px 20px 12px; text-align: center; max-width: min(92vw, 460px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); pointer-events: none; }
   .info.on { opacity: 1; transform: translate(-50%, 0); }
-  .info h3 { margin: 0; font-size: 20px; color: #c98a00; }
-  .info p { margin: 2px 0 0; font-size: 15px; }
+  .info h3 { margin: 0; font-size: 19px; color: var(--gold); letter-spacing: 0.5px; }
+  .info p { margin: 3px 0 0; font-size: 15px; color: var(--lav); }
+  #talk { position: fixed; left: 50%; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 8px); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; width: min(94vw, 540px); background: linear-gradient(180deg, var(--navy2), var(--navy)); color: var(--cream); border: 2px solid var(--gold); border-radius: 20px; padding: 20px 18px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 3; }
+  #talk.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #talk .who { position: absolute; top: -16px; left: 16px; background: linear-gradient(180deg, #ffe680, var(--gold2)); color: #3a2400; font-weight: 700; padding: 3px 16px; border-radius: 99px; box-shadow: 0 3px 0 #9a6a00; font-size: 16px; }
+  #talk .say { font-size: 17px; line-height: 1.4; min-height: 26px; }
+  #talk .opts { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  #talk .opts button { text-align: left; border: 1.5px solid rgba(206,203,246,0.35); background: rgba(46,52,128,0.75); color: var(--cream); border-radius: 12px; padding: 9px 12px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+  #talk .opts button i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: var(--gold); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  #talk .opts button.sel, #talk .opts button:hover { border-color: var(--gold); background: rgba(255,216,74,0.16); }
+  #talk .next { text-align: right; margin-top: 8px; font-size: 12px; color: var(--lav2); }
+  #prompt { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); background: var(--panel); color: #fff; border-radius: 99px; padding: 4px 12px; font-size: 14px; white-space: nowrap; pointer-events: none; display: none; }
+  #prompt::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--panel); }
+  #bite { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); font-size: 44px; font-weight: 700; color: #ff3b30; text-shadow: 0 3px 0 #fff, 0 0 10px #fff; pointer-events: none; display: none; }
   .help { position: fixed; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); background: var(--panel); border-radius: 99px; padding: 6px 16px; font-size: 14px; pointer-events: none; transition: opacity .6s; white-space: nowrap; }
+  #toast { position: fixed; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 52px); transform: translate(-50%, -10px); background: var(--panel); border-radius: 99px; padding: 7px 18px; font-size: 16px; opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; white-space: nowrap; z-index: 4; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
   #joy { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.6); display: none; pointer-events: none; }
   #joy i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; background: rgba(255,255,255,0.85); }
-  .btn { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); width: 74px; height: 74px; border-radius: 50%; background: var(--gold); color: #2a1d00; font-weight: 700; font-size: 16px; border: 0; box-shadow: 0 5px 0 #b8860b; display: none; }
+  .btn { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); width: 74px; height: 74px; border-radius: 50%; background: var(--gold); color: #2a1d00; font-weight: 700; font-size: 15px; border: 0; box-shadow: 0 5px 0 #b8860b; display: none; }
   .touch .btn { display: block; }
-  #load { position: fixed; inset: 0; background: linear-gradient(#0b0f2e, #2a1450); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 9; transition: opacity .5s; }
+  #actBtn { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 160px); background: #fff; color: var(--ink); box-shadow: 0 5px 0 #b9bdd6; display: none !important; font-size: 14px; }
+  #actBtn.hot { background: #ff5a4a; color: #fff; box-shadow: 0 5px 0 #b3281c; }
+  .touch #actBtn.on { display: block !important; }
+  /* layar muat */
+  #load { position: fixed; inset: 0; background: linear-gradient(#0b0f2e, #2a1450); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 20; transition: opacity .5s; padding: 16px; }
   #load h1 { margin: 0; font-size: 44px; color: var(--gold); text-shadow: 0 4px 0 #6b3a00; text-align: center; line-height: 1; }
   #load .bar { width: min(70vw, 320px); height: 14px; border-radius: 99px; background: rgba(255,255,255,0.15); overflow: hidden; }
   #load .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .2s; }
-  #load p { margin: 0; opacity: 0.8; }
-  #load button { display: none; font: inherit; font-size: 22px; font-weight: 700; padding: 12px 34px; border-radius: 99px; border: 0; background: var(--gold); color: #2a1d00; box-shadow: 0 5px 0 #b8860b; cursor: pointer; }
-  @media (max-width: 520px) { .title { font-size: 16px; } .stats { font-size: 13px; } #mini { width: 96px; height: 96px; top: calc(max(12px, env(safe-area-inset-top)) + 96px); } .help { display: none; } }
+  #load p { margin: 0; opacity: 0.85; text-align: center; }
+  #pick { display: none; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  #pick button { width: 108px; padding: 8px 6px 10px; border-radius: 18px; border: 3px solid transparent; background: rgba(255,255,255,0.1); color: #fff; font-weight: 700; font-size: 17px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  #pick button img { width: 92px; height: 92px; }
+  #pick button:hover, #pick button:focus-visible { border-color: var(--gold); background: rgba(255,216,74,0.15); outline: none; }
+  .socials { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .socials a { display: inline-flex; align-items: center; gap: 6px; color: #fff; text-decoration: none; background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 99px; font-size: 14px; }
+  .socials a i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; }
+  /* foto */
+  #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 7; }
+  .overlay { position: fixed; inset: 0; background: rgba(8, 10, 30, 0.86); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 8; padding: 16px; }
+  .overlay.on { display: flex; }
+  #photo img { max-width: 100%; max-height: 72vh; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .pbtn { font-weight: 700; font-size: 17px; padding: 10px 22px; border-radius: 99px; border: 0; cursor: pointer; background: var(--gold); color: #2a1d00; box-shadow: 0 4px 0 #b8860b; }
+  .pbtn.alt { background: #fff; color: var(--ink); box-shadow: 0 4px 0 #b9bdd6; }
+  /* tangkapan ikan */
+  #catch .card { background: linear-gradient(180deg, var(--navy2), var(--navy)); color: var(--cream); border: 2px solid var(--gold); border-radius: 22px; padding: 20px 28px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.45); min-width: 250px; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  #catch .em { font-size: 74px; line-height: 1.1; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)); }
+  #catch h3 { margin: 4px 0 0; font-size: 24px; color: var(--gold); }
+  #catch .rar { display: inline-block; margin-top: 6px; padding: 2px 12px; border-radius: 99px; font-weight: 700; font-size: 14px; color: #fff; }
+  #catch p { margin: 8px 0 0; font-size: 16px; color: var(--lav); }
+  @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  /* peta besar */
+  #bigmap { padding: 0; background: rgba(8, 10, 30, 0.92); }
+  #bigmap canvas { position: absolute; inset: 0; z-index: 0; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; cursor: grab; }
+  #bigmap .mtop { z-index: 2; position: absolute; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: center; gap: 8px; pointer-events: none; }
+  #bigmap .mtop b { background: var(--gold); color: #2a1d00; border-radius: 99px; padding: 5px 16px; }
+  #bigmap .mbtns { z-index: 2; position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 8px; }
+  #bigmap .mbtns button { width: 46px; height: 46px; border-radius: 50%; border: 0; background: #fff; color: var(--ink); font-size: 22px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 #b9bdd6; }
+  #mapInfo { z-index: 2; position: absolute; left: 50%; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 8px); transform: translateX(-50%); background: linear-gradient(180deg, var(--navy2), var(--navy)); color: var(--cream); border: 2px solid var(--gold); border-radius: 18px; padding: 10px 18px 12px; text-align: center; width: min(92vw, 440px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); display: none; }
+  #mapInfo h3 { margin: 0; font-size: 19px; color: var(--gold); } #mapInfo p { margin: 3px 0 0; font-size: 15px; color: var(--lav); }
+  /* menu */
+  #menu .box { position: relative; width: min(96vw, 580px); height: min(88vh, 740px); background: linear-gradient(180deg, #1d2257 0%, var(--navy) 55%, #120f33 100%); color: var(--cream); border: 2px solid var(--gold); border-radius: 22px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,0.5); }
+  #menu .tabs { display: flex; gap: 6px; padding: 12px 56px 10px 12px; scrollbar-width: none; background: rgba(10,12,40,0.55); border-bottom: 1px solid rgba(255,216,74,0.25); overflow-x: auto; flex-shrink: 0; }
+  #menu .tabs button { border: 0; background: transparent; padding: 7px 13px; border-radius: 99px; font-size: 15px; font-weight: 700; color: var(--lav2); cursor: pointer; white-space: nowrap; }
+  #menu .tabs button.on { background: linear-gradient(180deg, #ffe680, var(--gold2)); color: #3a2400; box-shadow: 0 2px 0 #9a6a00; }
+  #menu .mx { position: absolute; top: 9px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--gold); background: var(--navy); color: var(--gold); font-size: 16px; font-weight: 700; cursor: pointer; z-index: 2; }
+  #menu .tabs::-webkit-scrollbar { display: none; }
+  #menu .body { flex: 1; overflow-y: auto; padding: 18px 18px 24px; touch-action: pan-y; user-select: text; -webkit-user-select: text; scrollbar-color: var(--navy3) transparent; }
+  #menu h2 { margin: 0 0 6px; font-size: 23px; color: var(--gold); letter-spacing: 0.3px; } #menu h4 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--lav2); }
+  #menu p { margin: 0 0 10px; line-height: 1.5; font-size: 16px; color: var(--lav); }
+  #menu b { color: var(--gold); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; }
+  .tcard { background: linear-gradient(180deg, var(--navy3), var(--navy2)); border: 1px solid rgba(206,203,246,0.18); border-radius: 16px; padding: 11px 13px; }
+  .tcard b { display: block; font-size: 16px; color: var(--gold); } .tcard small { display: block; color: var(--lav2); font-size: 13px; }
+  .tcard.locked { background: rgba(35,40,103,0.45); border-style: dashed; } .tcard.locked b { color: var(--lav2); }
+  .tcard .q { font-style: italic; margin-top: 7px; font-size: 14px; color: var(--cream); }
+  .tcard .bio { margin-top: 6px; font-size: 14px; line-height: 1.4; color: var(--lav); }
+  .statrow { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 7px; background: rgba(46,52,128,0.55); border-radius: 12px; font-size: 16px; color: var(--cream); } .statrow b { color: var(--gold); }
+  .field { display: flex; gap: 8px; margin: 6px 0 12px; }
+  .field input { flex: 1; min-width: 0; font: inherit; font-size: 17px; padding: 9px 14px; border-radius: 12px; border: 2px solid rgba(206,203,246,0.35); background: #0f1236; color: var(--cream); outline: none; }
+  .field input:focus { border-color: var(--gold); } .field input::placeholder { color: #7a76b8; }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; margin-bottom: 8px; background: rgba(46,52,128,0.55); border-radius: 14px; font-size: 16px; color: var(--cream); }
+  .opt input[type=range] { width: 150px; accent-color: var(--gold); }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .seg button { border: 1.5px solid rgba(206,203,246,0.35); background: rgba(15,18,54,0.7); color: var(--lav); border-radius: 99px; padding: 5px 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .seg button.on { background: linear-gradient(180deg, #ffe680, var(--gold2)); border-color: var(--gold); color: #3a2400; }
+  .rules { display: grid; gap: 7px; margin: 6px 0 4px; } .rules div { background: rgba(46,52,128,0.55); border-left: 4px solid var(--gold); border-radius: 0; padding: 9px 12px; font-size: 16px; color: var(--cream); }
+  .ep { background: linear-gradient(180deg, var(--navy3), var(--navy2)); border: 1px solid rgba(206,203,246,0.18); border-radius: 14px; padding: 11px 13px; margin-bottom: 8px; color: var(--lav); line-height: 1.45; } .ep b { color: var(--gold); } .ep em { font-style: normal; color: var(--cream); font-weight: 600; }
+  .ctl { background: rgba(46,52,128,0.55); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+  .ctl h5 { margin: 0 0 8px; font-size: 15px; color: var(--gold); }
+  .krow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(206,203,246,0.12); font-size: 15px; color: var(--cream); } .krow:last-child { border-bottom: 0; }
+  .krow .kk { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  kbd { font-family: inherit; min-width: 28px; text-align: center; padding: 3px 7px; border-radius: 7px; background: linear-gradient(180deg, #fff6d6, #e9dcae); color: #3a2400; font-size: 13px; font-weight: 700; box-shadow: 0 2px 0 #9a7a30; }
+  kbd.t { background: linear-gradient(180deg, #e9e7ff, #c9c4f5); color: var(--ink); box-shadow: 0 2px 0 #7f77dd; }
+  .links a { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px; font-size: 18px; font-weight: 700; box-shadow: 0 4px 0 rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); }
+  .links a small { display: block; font-weight: 500; font-size: 14px; opacity: 0.85; }
+  .links a i { font-style: normal; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.22); display: grid; place-items: center; font-size: 18px; }
+  .pbtn.alt.dark { background: rgba(15,18,54,0.7); color: var(--lav); border: 1.5px solid rgba(206,203,246,0.35); box-shadow: none; }
+  .talking #actBtn { display: none !important; }
+  @media (max-width: 520px) { #menu .tabs button { padding: 8px 9px; font-size: 14px; } .title { font-size: 16px; } .stats { font-size: 13px; } #mini { width: 96px; height: 96px; top: calc(max(12px, env(safe-area-inset-top)) + 96px); } .tools { top: calc(max(12px, env(safe-area-inset-top)) + 204px); gap: 7px; } .tools button { width: 42px; height: 42px; font-size: 18px; } .help { display: none; } #pick button { width: 96px; } #pick button img { width: 80px; height: 80px; } }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div class="hud"><div class="day">DAY 4</div><div class="title">DUNIA IMPIANMU</div></div>
-<div class="stats">Gold <b>30</b><br>Warga <b>565</b><br>Rumah <b>67</b></div>
-<canvas id="mini" width="260" height="260"></canvas>
-<div class="help" id="help">WASD / panah: jalan · Spasi: lompat · drag mouse: putar kamera</div>
+<div class="hud"><div class="day" id="dayLbl">DAY 4</div><div class="title">DUNIA IMPIANMU</div></div>
+<div class="stats" id="stats"></div>
+<canvas id="mini" width="260" height="260" title="Buka peta besar"></canvas>
+<div class="tools">
+  <button id="bPhoto" title="Foto (P)" aria-label="Ambil foto">📷</button>
+  <button id="bNight" title="Siang / malam (N)" aria-label="Ganti siang atau malam">🌓</button>
+  <button id="bWeather" title="Cuaca (R)" aria-label="Ganti cuaca">☁️</button>
+  <button id="bChar" title="Ganti karakter (C)" aria-label="Ganti karakter">👤</button>
+  <button id="bSound" title="Suara (M)" aria-label="Nyalakan atau matikan suara">🔊</button>
+  <button id="bMenu" title="Menu (Esc)" aria-label="Buka menu">⚙️</button>
+</div>
+<div class="help" id="help">WASD jalan · Spasi lompat · E ngobrol/mancing · Esc menu</div>
+<div id="toast"></div>
 <div class="info" id="info"><h3></h3><p></p></div>
+<div id="prompt"></div>
+<div id="bite">!</div>
+<div id="talk"><div class="who"></div><div class="say"></div><div class="opts"></div><div class="next"></div></div>
 <div id="joy"><i></i></div>
+<button class="btn" id="actBtn">NGOBROL</button>
 <button class="btn" id="jump">LOMPAT</button>
-<div id="load"><h1>DUNIA<br>IMPIANMU</h1><div class="bar"><i></i></div><p id="lp">Memuat negeri...</p><button id="go">MULAI JALAN-JALAN</button></div>
+<div id="flash"></div>
+<div id="photo" class="overlay"><img alt="Foto dari Dunia Impianmu"><div class="row"><button class="pbtn" id="pSave">Simpan</button><button class="pbtn alt" id="pShare">Bagikan</button><button class="pbtn alt" id="pClose">Tutup</button></div></div>
+<div id="catch" class="overlay"><div class="card"><div class="em"></div><h3></h3><span class="rar"></span><p></p><div class="row" style="margin-top:14px"><button class="pbtn" id="cOk">Mantap!</button></div></div></div>
+<div id="bigmap" class="overlay"><canvas></canvas><div class="mtop"><b>PETA NEGERI</b></div><div class="mbtns"><button id="mClose" aria-label="Tutup peta">✕</button><button id="mIn" aria-label="Perbesar">+</button><button id="mOut" aria-label="Perkecil">−</button><button id="mMe" aria-label="Ke posisiku">◎</button></div><div id="mapInfo"><h3></h3><p></p></div></div>
+<div id="menu" class="overlay"><div class="box"><button class="mx" data-x="1" aria-label="Tutup menu">✕</button><div class="tabs"></div><div class="body"></div></div></div>
+<div id="load"><h1>DUNIA<br>IMPIANMU</h1><div class="bar"><i></i></div><p id="lp">Memuat negeri...</p><div id="pick"></div><div class="socials" id="socials"></div></div>
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>
 <script type="module" src="./game.js"></script>
 </body>
