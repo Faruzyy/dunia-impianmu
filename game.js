@@ -233,9 +233,24 @@ for (let i = 0; i < (touch ? 18 : 30); i++) {
 }
 
 // ------------------------------------------------------------------ input
-const keys = {};
-addEventListener('keydown', (e) => { keys[e.code] = true; if (e.code === 'Space') { jump(); e.preventDefault(); } });
-addEventListener('keyup', (e) => { keys[e.code] = false; });
+// Tombol bisa "nyangkut" kalau browser tidak mengirim keyup (fokus pindah, Alt, klik di luar).
+// Pengaman: (1) lepas semua saat fokus hilang, (2) lepas kalau sinyal "tahan" dari OS berhenti, (3) cocokkan kode & huruf.
+const keys = {}, seen = {}, rep = {};
+const KEYMAP = { w: 'KeyW', a: 'KeyA', s: 'KeyS', d: 'KeyD' };
+const codeOf = (e) => KEYMAP[(e.key || '').toLowerCase()] || e.code;
+addEventListener('keydown', (e) => {
+  const c = codeOf(e); keys[c] = true; seen[c] = performance.now(); if (e.repeat) rep[c] = true;
+  if (e.code === 'Space') { if (!e.repeat) jump(); e.preventDefault(); }
+});
+addEventListener('keyup', (e) => { for (const c of new Set([codeOf(e), e.code])) { keys[c] = false; rep[c] = false; } });
+const releaseAll = () => { for (const c in keys) { keys[c] = false; rep[c] = false; } };
+addEventListener('blur', releaseAll);
+addEventListener('contextmenu', releaseAll);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+function keyWatchdog() {   // OS mengirim keydown berulang selama tombol ditahan; kalau berhenti > 0,6 dtk, anggap sudah dilepas
+  const now = performance.now();
+  for (const c in keys) if (keys[c] && rep[c] && now - seen[c] > 600) { keys[c] = false; rep[c] = false; }
+}
 let camYaw = 0, camPitch = 0.42, camDist = 7.5;
 const joyEl = $('#joy'), knob = joyEl.querySelector('i');
 const joy = { id: null, x0: 0, y0: 0, x: 0, y: 0 };
@@ -323,6 +338,7 @@ function tick() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame
 function frame(dt) {
   const t = (simT += dt);
   // arah gerak relatif kamera
+  keyWatchdog();
   let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
   let iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
   const mag = Math.min(1, Math.hypot(ix, iy));
