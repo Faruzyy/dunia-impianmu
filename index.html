@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Dunia Impianmu · Jalan-Jalan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --gold: #ffd84a; --ink: #1d2050; --panel: rgba(18, 22, 60, 0.78); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fcaff; font-family: 'Fredoka', system-ui, sans-serif; color: #fff; touch-action: none; user-select: none; -webkit-user-select: none; }
+  canvas#c { display: block; width: 100vw; height: 100vh; height: 100dvh; }
+  .hud { position: fixed; left: max(12px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .day { align-self: flex-start; background: var(--gold); color: #2a1d00; font-weight: 700; padding: 4px 14px; border-radius: 99px; box-shadow: 0 3px 0 #b8860b; font-size: 18px; }
+  .title { font-weight: 700; font-size: 20px; text-shadow: 0 2px 0 var(--ink), 0 0 8px rgba(0,0,0,0.35); }
+  .stats { position: fixed; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); background: var(--panel); border-radius: 14px; padding: 8px 12px; font-size: 15px; line-height: 1.5; pointer-events: none; min-width: 120px; }
+  .stats b { color: var(--gold); float: right; margin-left: 12px; }
+  #mini { position: fixed; right: max(12px, env(safe-area-inset-right)); top: calc(max(12px, env(safe-area-inset-top)) + 106px); width: 130px; height: 130px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 3px 10px rgba(0,0,0,0.25); pointer-events: none; background: #8fd06b; }
+  .info { position: fixed; left: 50%; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 8px); transform: translate(-50%, 20px); opacity: 0; transition: opacity .25s, transform .25s; background: #fff; color: var(--ink); border-radius: 18px; padding: 10px 18px 12px; text-align: center; max-width: min(92vw, 460px); box-shadow: 0 5px 0 rgba(0,0,0,0.2); pointer-events: none; }
+  .info.on { opacity: 1; transform: translate(-50%, 0); }
+  .info h3 { margin: 0; font-size: 20px; color: #c98a00; }
+  .info p { margin: 2px 0 0; font-size: 15px; }
+  .help { position: fixed; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); background: var(--panel); border-radius: 99px; padding: 6px 16px; font-size: 14px; pointer-events: none; transition: opacity .6s; white-space: nowrap; }
+  #joy { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.6); display: none; pointer-events: none; }
+  #joy i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; background: rgba(255,255,255,0.85); }
+  .btn { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); width: 74px; height: 74px; border-radius: 50%; background: var(--gold); color: #2a1d00; font-weight: 700; font-size: 16px; border: 0; box-shadow: 0 5px 0 #b8860b; display: none; }
+  .touch .btn { display: block; }
+  #load { position: fixed; inset: 0; background: linear-gradient(#0b0f2e, #2a1450); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 9; transition: opacity .5s; }
+  #load h1 { margin: 0; font-size: 44px; color: var(--gold); text-shadow: 0 4px 0 #6b3a00; text-align: center; line-height: 1; }
+  #load .bar { width: min(70vw, 320px); height: 14px; border-radius: 99px; background: rgba(255,255,255,0.15); overflow: hidden; }
+  #load .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .2s; }
+  #load p { margin: 0; opacity: 0.8; }
+  #load button { display: none; font: inherit; font-size: 22px; font-weight: 700; padding: 12px 34px; border-radius: 99px; border: 0; background: var(--gold); color: #2a1d00; box-shadow: 0 5px 0 #b8860b; cursor: pointer; }
+  @media (max-width: 520px) { .title { font-size: 16px; } .stats { font-size: 13px; } #mini { width: 96px; height: 96px; top: calc(max(12px, env(safe-area-inset-top)) + 96px); } .help { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud"><div class="day">DAY 4</div><div class="title">DUNIA IMPIANMU</div></div>
+<div class="stats">Gold <b>30</b><br>Warga <b>565</b><br>Rumah <b>67</b></div>
+<canvas id="mini" width="260" height="260"></canvas>
+<div class="help" id="help">WASD / panah: jalan · Spasi: lompat · drag mouse: putar kamera</div>
+<div class="info" id="info"><h3></h3><p></p></div>
+<div id="joy"><i></i></div>
+<button class="btn" id="jump">LOMPAT</button>
+<div id="load"><h1>DUNIA<br>IMPIANMU</h1><div class="bar"><i></i></div><p id="lp">Memuat negeri...</p><button id="go">MULAI JALAN-JALAN</button></div>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
