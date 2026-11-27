@@ -1119,7 +1119,9 @@ let helpHidden = false; function hideHelp() { if (!helpHidden) { helpHidden = tr
 // ------------------------------------------------------------------ toko (koin saku) & efek makanan
 const BOOST = { t: 0, k: 1, kind: '', puff: 0 };
 let shopId = null;
+let shopOpenT = 0;
 function openShop(id) {
+  shopOpenT = performance.now();
   const sh = SHOPS[id]; if (!sh) return;
   shopId = id; renderShop(); $('#shop').classList.add('on'); releaseAll(); sfx('pop_soft', 0.6);
 }
@@ -1167,6 +1169,8 @@ function updateBoost(dt) {
   if (BOOST.t <= 0) { BOOST.k = 1; toast('Efeknya sudah habis', 1.4); }
 }
 $('#shop').addEventListener('click', (e) => {
+  // di HP, toko dibuka saat jari menyentuh opsi dialog; "klik" dari jari yang diangkat jangan sampai menutup toko / membeli
+  if (performance.now() - shopOpenT < 450) return;
   if (e.target.closest('[data-free]')) { takeFree(); return; }
   const b = e.target.closest('[data-buy]'); if (b) { buy(+b.dataset.buy); return; }
   if (e.target.id === 'shopClose' || e.target === $('#shop')) { $('#shop').classList.remove('on'); sfx('pop_soft', 0.4); }
