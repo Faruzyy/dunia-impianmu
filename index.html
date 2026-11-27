@@ -2,6 +2,9 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-seCLxFfQToKeWoPJAMxxTkPU81nIj/JsvrOdN9OtJwI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="copyright" content="© Dunia Impianmu">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Dunia Impianmu · Jalan-Jalan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,9 +36,20 @@
   #talk .opts button { text-align: left; border: 1.5px solid rgba(206,203,246,0.35); background: rgba(46,52,128,0.75); color: var(--cream); border-radius: 12px; padding: 9px 12px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; gap: 10px; align-items: center; }
   #talk .opts button i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: var(--gold); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
   #talk .opts button.sel, #talk .opts button:hover { border-color: var(--gold); background: rgba(255,216,74,0.16); }
+  #talk .opts button span { flex: 1; }
+  #talk .opts button em { font-style: normal; flex: none; font-size: 11px; font-weight: 800; letter-spacing: .5px; border-radius: 99px; padding: 3px 9px; }
+  #talk .opts button.misi { border: 2px solid var(--gold); background: linear-gradient(90deg, rgba(255,216,74,0.5), rgba(255,150,40,0.28)); color: #fff6cf; animation: misiGlow 1.4s ease-in-out infinite; }
+  #talk .opts button.misi i, #talk .opts button.misi em { background: var(--gold); color: #2a1d00; }
+  #talk .opts button.kerja { border: 2px dashed #7fdc6a; background: rgba(70,150,70,0.30); color: #e6ffd9; }
+  #talk .opts button.kerja i { background: #4caf50; color: #fff; }
+  #talk .opts button.kerja em { background: #7fdc6a; color: #123d0c; }
+  @keyframes misiGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(255,216,74,0); } 50% { box-shadow: 0 0 14px 2px rgba(255,216,74,0.55); } }
   #talk .next { text-align: right; margin-top: 8px; font-size: 12px; color: var(--lav2); }
   #prompt { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); background: var(--panel); color: #fff; border-radius: 99px; padding: 4px 12px; font-size: 14px; white-space: nowrap; pointer-events: none; display: none; }
   #prompt::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--panel); }
+  #jobBar { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); width: 46px; height: 46px; border-radius: 50%; display: none; place-items: center; pointer-events: none; z-index: 5;
+    background: conic-gradient(#ffd84a var(--k, 0deg), rgba(18,22,60,0.75) 0); box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(0,0,0,0.35); }
+  #jobBar b { width: 34px; height: 34px; border-radius: 50%; background: #1b2160; display: grid; place-items: center; font-size: 19px; }
   #bite { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); font-size: 44px; font-weight: 700; color: #ff3b30; text-shadow: 0 3px 0 #fff, 0 0 10px #fff; pointer-events: none; display: none; }
   .help { position: fixed; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); background: var(--panel); border-radius: 99px; padding: 6px 16px; font-size: 14px; pointer-events: none; transition: opacity .6s; white-space: nowrap; }
   #toast { position: fixed; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 52px); transform: translate(-50%, -10px); background: var(--panel); border-radius: 99px; padding: 7px 18px; font-size: 16px; opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; white-space: nowrap; z-index: 4; }
@@ -122,14 +136,44 @@
   .links a small { display: block; font-weight: 500; font-size: 14px; opacity: 0.85; }
   .links a i { font-style: normal; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.22); display: grid; place-items: center; font-size: 18px; }
   .pbtn.alt.dark { background: rgba(15,18,54,0.7); color: var(--lav); border: 1.5px solid rgba(206,203,246,0.35); box-shadow: none; }
+  /* koin saku, toko, teleport */
+  .stats .koin { margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.18); color: #c9f5a8; }
+  .stats .koin b { color: #9fe870; }
+  #shop .card { background: linear-gradient(180deg, var(--navy2), var(--navy)); color: var(--cream); border: 2px solid var(--gold); border-radius: 22px; padding: 18px 18px 16px; width: min(94vw, 440px); max-height: 86vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.45); animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
+  #shop h3 { margin: 0; font-size: 22px; color: var(--gold); text-align: center; }
+  #shop .sk { text-align: center; margin: 4px 0 12px; color: var(--lav); } #shop .sk b { color: #9fe870; }
+  #shop .slist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  #shop .slist button { display: flex; align-items: center; gap: 12px; text-align: left; border: 1.5px solid rgba(206,203,246,0.3); background: rgba(46,52,128,0.7); color: var(--cream); border-radius: 14px; padding: 9px 12px; cursor: pointer; font-size: 16px; font-weight: 700; }
+  #shop .slist button:hover { border-color: var(--gold); background: rgba(255,216,74,0.14); }
+  #shop .slist button.poor { opacity: 0.55; }
+  #shop .slist button.free { border: 2px solid #9fe870; background: rgba(120,200,90,0.18); } #shop .slist button.free .pr { background: #9fe870; } #shop .slist button.free small { color: #c9f5a8; }
+  #shop .em { font-size: 30px; } #shop .nm { flex: 1; } #shop .nm small { display: block; font-weight: 500; font-size: 13px; color: var(--lav2); }
+  #shop .pr { background: var(--gold); color: #2a1d00; border-radius: 99px; padding: 3px 10px; font-size: 14px; white-space: nowrap; }
+  #tpBar { z-index: 2; position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 40px); left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: min(92vw, 640px); }
+  #tpBar button { border: 0; border-radius: 99px; padding: 6px 12px; font-size: 14px; font-weight: 700; background: rgba(18,22,60,0.88); color: #fff; border: 1.5px solid rgba(255,216,74,0.6); cursor: pointer; }
+  #tpBar button:hover { background: var(--gold); color: #2a1d00; }
+  #quest { position: fixed; left: max(12px, env(safe-area-inset-left)); top: calc(max(12px, env(safe-area-inset-top)) + 76px); max-width: min(46vw, 300px); background: var(--panel); border-left: 4px solid var(--gold); border-radius: 12px; padding: 7px 12px 8px; cursor: pointer; }
+  #quest b { display: block; font-size: 15px; color: var(--gold); } #quest b i { font-style: normal; color: #fff; margin-left: 4px; }
+  #quest span { display: block; font-size: 13px; color: var(--lav); line-height: 1.3; margin-top: 2px; }
+  #quest.job { border-left-color: #9fe870; } #quest.job b { color: #c9f5a8; }
+  .mrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 7px; background: rgba(46,52,128,0.55); border-radius: 12px; font-size: 16px; color: var(--cream); }
+  .mrow span { flex: 1; } .mrow small { display: block; font-size: 13px; color: var(--lav2); margin-top: 2px; }
+  .mrow b { color: var(--gold); text-align: right; font-size: 14px; white-space: nowrap; }
+  .mrow em { display: block; height: 6px; border-radius: 99px; margin-top: 6px; background: linear-gradient(90deg, var(--gold) calc(var(--k) * 100%), rgba(255,255,255,0.15) 0); }
+  .mrow.cur { border: 1.5px solid var(--gold); } .mrow.done { opacity: 0.6; } .mrow.lock { opacity: 0.45; border: 1.5px dashed rgba(206,203,246,0.3); }
+  .capture #quest { display: none !important; }
+  @media (max-width: 520px) { #quest { top: calc(max(12px, env(safe-area-inset-top)) + 62px); max-width: 52vw; padding: 5px 9px 6px; } #quest b { font-size: 13px; } #quest span { font-size: 11px; } }
   .talking #actBtn { display: none !important; }
+  .copy { margin-top: 18px; font-size: 12px; opacity: 0.75; text-align: center; line-height: 1.5; }
+  .capture .hud, .capture .stats, .capture #mini, .capture .tools, .capture .help, .capture #toast, .capture #info, .capture .btn, .capture #actBtn, .capture #joy, .capture #prompt { display: none !important; }
   @media (max-width: 520px) { #menu .tabs button { padding: 8px 9px; font-size: 14px; } .title { font-size: 16px; } .stats { font-size: 13px; } #mini { width: 96px; height: 96px; top: calc(max(12px, env(safe-area-inset-top)) + 96px); } .tools { top: calc(max(12px, env(safe-area-inset-top)) + 204px); gap: 7px; } .tools button { width: 42px; height: 42px; font-size: 18px; } .help { display: none; } #pick button { width: 96px; } #pick button img { width: 80px; height: 80px; } }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div class="hud"><div class="day" id="dayLbl">DAY 4</div><div class="title">DUNIA IMPIANMU</div></div>
+<div class="hud"><div class="day" id="dayLbl">DAY 5</div><div class="title">DUNIA IMPIANMU</div></div>
 <div class="stats" id="stats"></div>
+<div id="quest"></div>
 <canvas id="mini" width="260" height="260" title="Buka peta besar"></canvas>
 <div class="tools">
   <button id="bPhoto" title="Foto (P)" aria-label="Ambil foto">📷</button>
@@ -139,7 +183,8 @@
   <button id="bSound" title="Suara (M)" aria-label="Nyalakan atau matikan suara">🔊</button>
   <button id="bMenu" title="Menu (Esc)" aria-label="Buka menu">⚙️</button>
 </div>
-<div class="help" id="help">WASD jalan · Spasi lompat · E ngobrol/mancing · Esc menu</div>
+<div class="help" id="help">WASD jalan · Spasi lompat/pilih · E ngobrol/mancing/kerja · M peta · Esc menu</div>
+<div id="jobBar"><b></b></div>
 <div id="toast"></div>
 <div class="info" id="info"><h3></h3><p></p></div>
 <div id="prompt"></div>
@@ -151,7 +196,8 @@
 <div id="flash"></div>
 <div id="photo" class="overlay"><img alt="Foto dari Dunia Impianmu"><div class="row"><button class="pbtn" id="pSave">Simpan</button><button class="pbtn alt" id="pShare">Bagikan</button><button class="pbtn alt" id="pClose">Tutup</button></div></div>
 <div id="catch" class="overlay"><div class="card"><div class="em"></div><h3></h3><span class="rar"></span><p></p><div class="row" style="margin-top:14px"><button class="pbtn" id="cOk">Mantap!</button></div></div></div>
-<div id="bigmap" class="overlay"><canvas></canvas><div class="mtop"><b>PETA NEGERI</b></div><div class="mbtns"><button id="mClose" aria-label="Tutup peta">✕</button><button id="mIn" aria-label="Perbesar">+</button><button id="mOut" aria-label="Perkecil">−</button><button id="mMe" aria-label="Ke posisiku">◎</button></div><div id="mapInfo"><h3></h3><p></p></div></div>
+<div id="bigmap" class="overlay"><canvas></canvas><div class="mtop"><b>PETA NEGERI</b></div><div id="tpBar"></div><div class="mbtns"><button id="mClose" aria-label="Tutup peta">✕</button><button id="mIn" aria-label="Perbesar">+</button><button id="mOut" aria-label="Perkecil">−</button><button id="mMe" aria-label="Ke posisiku">◎</button></div><div id="mapInfo"><h3></h3><p></p></div></div>
+<div id="shop" class="overlay"><div class="card"></div></div>
 <div id="menu" class="overlay"><div class="box"><button class="mx" data-x="1" aria-label="Tutup menu">✕</button><div class="tabs"></div><div class="body"></div></div></div>
 <div id="load"><h1>DUNIA<br>IMPIANMU</h1><div class="bar"><i></i></div><p id="lp">Memuat negeri...</p><div id="pick"></div><div class="socials" id="socials"></div></div>
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>

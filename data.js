@@ -1,9 +1,10 @@
+// © Dunia Impianmu. Hak cipta dilindungi: dilarang menyalin atau menerbitkan ulang tanpa izin.
 // =====================================================================
 //  TEKS & DATA DUNIA IMPIANMU (aman diedit, jaga tanda kutip & koma)
 // =====================================================================
 
-export const DAY = 4;
-export const STATUS = { gold: 30, warga: 565, rumah: 67 };
+export const DAY = 5;
+export const STATUS = { gold: 1087, warga: 628, rumah: 67 };
 
 export const LINKS = [
   { name: 'YouTube', handle: '@DuniaImpianmu', url: 'https://www.youtube.com/@DuniaImpianmu', color: '#ff3b30', icon: '▶' },
@@ -24,7 +25,7 @@ export const INFO = {
   wisata: ['TEMPAT WISATA', 'Dibangun di Day 4 (-100 Gold)'],
   teknologi: ['PUSAT TEKNOLOGI', 'Teknologi modern negeri (-80 Gold)'],
   sekolah: ['SEKOLAH', 'Permintaan srimursejati & ★◇B0BY_R4NT\'S◇★ (Day 2) · Kepala Sekolah: $Wan$'],
-  gudang: ['GUDANG GOLD', 'Kas negeri. Setiap koin tercatat di Papan Kas Negeri'],
+  gudang: ['GUDANG GOLD', 'Kas negeri, kini di samping Tambang Gold. Setiap koin tercatat di Papan Kas Negeri'],
   rumah_ucil: ['RUMAH UCIL', 'Rumah pertama di negeri ini (Day 1)'],
   rumah_ucup: ['RUMAH UCUP', 'Gagal di Day 1 karena Gold habis, janji ditepati di Day 2'],
   pos_ronda: ['POS RONDA', 'Permintaan @NafisahUtoi (Day 2) · penjaga malam negeri'],
@@ -34,6 +35,15 @@ export const INFO = {
   ladang: ['LADANG', 'Permintaan CAT LOVERSS (Day 3)'],
   ladang2: ['LADANG', 'Permintaan CAT LOVERSS (Day 3)'],
   kolam_lele: ['KOLAM LELE', 'Permintaan darkness (Day 3)'],
+  pasar: ['PASAR', 'Permintaan @dremholl76 (Day 5, -150 Gold)'],
+  kios_roti: ['TOKO ROTI', 'Permintaan des._0.0 (Day 5, -40 Gold)'],
+  kios_seblak: ['TOKO SEBLAK', 'Permintaan nesya25074 (Day 5, -30 Gold) · kata Ucup, seblak level 10 paling enak!'],
+  kios_padang: ['NASI PADANG', 'Permintaan kesatria_bebas (Day 5, -40 Gold)'],
+  sawah: ['PERTANIAN', 'Permintaan @ondingondingonding3001 (Day 5, -60 Gold) · dialiri air bendungan'],
+  bendungan: ['BENDUNGAN', 'Permintaan agil k 2 (Day 5, -250 Gold)'],
+  waduk: ['WADUK', 'Air dari bendungan untuk sawah dan listrik negeri'],
+  pembangkit: ['PEMBANGKIT LISTRIK', 'Permintaan @naga_hilang (Day 5, -300 Gold) · air jadi listrik untuk seluruh negeri'],
+  taman_safari: ['TAMAN SAFARI', 'Permintaan N🙅_ (Day 5, -400 Gold) · tempat wisata pertama negeri. Singanya jinak... katanya'],
 };
 
 // =====================================================================
@@ -48,8 +58,10 @@ export const INFO = {
 export const DIALOG = {
   slime: { name: 'Slime', panggil: 'Cil', start: 'a', nodes: {
     a: { say: 'Eh, {panggil}! Lagi jalan-jalan keliling negeri?', opts: [['Iya, negerinya makin luas!', 'luas'], ['Bang lagi ngapain?', 'ngapain'], ['Dadah, Bang!', 'bye']] },
-    luas: { say: 'Berkat warga semua. Di Day 4 kita bangun 65 rumah dan 11 bangunan baru sekaligus!', opts: [['Gold kita tinggal berapa?', 'gold'], ['Keren, Bang!', 'bye']] },
-    gold: { say: 'Tinggal 30. Tapi tenang, satu Like dari penonton itu satu Gold, satu repost sepuluh Gold!', opts: [['Siap, aku bantu ajak!', 'bye']] },
+    luas: { say: 'Berkat warga semua. Di Day 5 kita buka kawasan selatan: pasar, sawah, bendungan, pembangkit listrik, sampai taman safari!', opts: [['Gold kita tinggal berapa?', 'gold'], ['Bang, katanya ada yang nyogok?', 'sogok'], ['Keren, Bang!', 'bye']] },
+    gold: { say: 'Sisa 1.087 Gold. Satu Like dari penonton itu satu Gold, satu repost sepuluh Gold!', opts: [['Siap, aku bantu ajak!', 'bye']] },
+    sogok: { say: 'Juragan bawa 5.000 Gold, lalu dua karung 10.000 Gold. Jawabanku tetap: TIDAK! Jabatan di negeri ini tidak dijual.', opts: [['Terus menterinya siapa?', 'menteri']] },
+    menteri: { say: 'Dipilih dari niat baik! Tulis rencanamu di komentar. Rencana terbaik jadi menteri di Day 6.' },
     ngapain: { say: 'Lagi mikir mau bangun apa di episode berikutnya. Kamu ada ide?', opts: [['Taman bermain!', 'ide'], ['Bandara!', 'ide'], ['Belum ada...', 'ide2']] },
     ide: { say: 'Wah, menarik! Tulis di kolom komentar ya, biar Gold-nya dikumpulkan bareng warga.' },
     ide2: { say: 'Gak apa-apa. Kalau nanti dapat ide, tulis di komentar ya!' },
@@ -64,17 +76,20 @@ export const DIALOG = {
     bye: { say: 'Dadah, {panggil}! Hati-hati!' },
   } },
   ucup: { name: 'Ucup', panggil: 'Bang', start: 'a', nodes: {
-    a: { say: '{panggil}! Gold kita banyak banget... eh, sekarang tinggal 30 ya?', opts: [['Iya, habis buat membangun', 'habis'], ['Kok kamu senyum-senyum?', 'senyum'], ['Dadah, Cup!', 'bye']] },
-    habis: { say: 'Gak apa-apa! Hasilnya gokil: stadion, hotel, tambang... semuanya jadi!', opts: [['Kamu paling suka yang mana?', 'suka'], ['Dadah!', 'bye']] },
+    a: { say: '{panggil}! Udah ke pasar baru di selatan? Ada toko seblak!', opts: [['Udah, ramai banget', 'habis'], ['Aku bawa bola buat kamu!', '?punya:bola:bola:nobola'], ['Kok kamu senyum-senyum?', 'senyum']] },
+    habis: { say: 'Aku pesan seblak level sepuluh... sekarang lidahku masih kebakar. Gokil!', opts: [['Kamu paling suka bangunan yang mana?', 'suka'], ['Dadah!', 'bye']] },
     suka: { say: 'Stadion! Aku mau main bola di sana. Eh, tapi bolanya belum ada...', opts: [['Nanti kita minta ke penonton', 'minta']] },
-    minta: { say: 'Setuju! Penonton, tulis di komentar ya: bola buat Ucup!' },
+    minta: { say: 'Setuju! Penonton, tulis di komentar ya: bola buat Ucup!', opts: [['Aku punya bola! Nih', '?punya:bola:bola:nobola']] },
+    bola: { say: 'BOLA?! Buat aku?! Makasih, {panggil}! Besok aku main di stadion!', fx: 'love', give: 'bola' },
+    nobola: { say: 'Hah, mana? Hehe... katanya di pasar ada yang jual bola lho.' },
     senyum: { say: 'Aku masih ingat, dulu rumahku gagal dibangun gara-gara Gold habis. Sekarang negeri kita luas banget!', opts: [['Janji tetap ditepati, kan?', 'janji'], ['Dadah!', 'bye']] },
     janji: { say: 'Iya! Janji adalah janji. Makasih ya, {panggil}!' },
     bye: { say: 'Dadah, {panggil}! Gokil!' },
   } },
   wakil: { name: 'Bocil SCP', start: 'a', nodes: {
-    a: { say: 'Lapor, {panggil}! Bocil SCP, Wakil Menteri Pembangunan, siap bertugas!', opts: [['Gimana laporan hari ini?', 'lapor'], ['Kamu suka jadi wakil?', 'suka'], ['Lanjutkan tugasmu!', 'bye']] },
-    lapor: { say: 'Day 4: 65 rumah gotong royong dan 11 bangunan baru. Sisa Gold 30. Semua tercatat di Papan Kas Negeri!', opts: [['Kerja bagus!', 'bagus'], ['Tidak ada yang dikorupsi, kan?', 'korupsi']] },
+    a: { say: 'Lapor, {panggil}! Bocil SCP, Wakil Menteri Pembangunan, siap bertugas!', opts: [['Gimana laporan hari ini?', 'lapor'], ['Siapa yang jadi menteri?', 'menteri'], ['Kamu suka jadi wakil?', 'suka']] },
+    menteri: { say: 'Menteri tidak bisa dibeli pakai Gold! Dipilih dari niat baik. Tulis rencanamu di kolom komentar video, rencana terbaik diumumkan di Day 6!', opts: [['Siap, aku tulis!', 'bye']] },
+    lapor: { say: 'Day 5: Gold masuk 2.357, delapan bangunan baru di kawasan selatan, sisa 1.087. Sogokan Juragan TIDAK masuk kas. Semua tercatat di Papan Kas Negeri!', opts: [['Kerja bagus!', 'bagus'], ['Tidak ada yang dikorupsi, kan?', 'korupsi']] },
     bagus: { say: 'Terima kasih, {panggil}! Target berikutnya saya tunggu dari komentar penonton.' },
     korupsi: { say: 'Tidak ada satu koin pun, {panggil}! Kalau ada yang berani, Papan Kas Negeri bakal bersinar!' },
     suka: { say: 'Suka banget! Dulu saya cuma minta jadi wakil... eh, langsung diangkat. Terima kasih, {panggil}!', opts: [['Sama-sama!', 'bye']] },
@@ -89,7 +104,8 @@ export const DIALOG = {
     bye: { say: 'Mampir lagi ya, {panggil}!' },
   } },
   penambang: { name: 'Penambang', start: 'a', nodes: {
-    a: { say: 'Wah, {panggil} datang! Mau lihat Tambang Gold?', opts: [['Gimana bisa dapat 1000 Gold?', 'seribu'], ['Siapa yang minta tambang ini?', 'siapa'], ['Dadah!', 'bye']] },
+    a: { say: 'Wah, {panggil} datang! Mau lihat Tambang Gold?', opts: [['Ada kerjaan buatku?', 'kerja'], ['Gimana bisa dapat 1000 Gold?', 'seribu'], ['Siapa yang minta tambang ini?', 'siapa']] },
+    kerja: { say: 'Ada! Bantu angkut 3 karung emas dari tambang ke Gudang Gold. Gudangnya di sebelah utara tambang. Cepat ya, 60 detik!', opts: [['Siap, angkut!', 'job:angkut'], ['Nanti dulu', 'bye']] },
     seribu: { say: 'Kami juga kaget! Baru dibuka, emasnya langsung berhamburan keluar...', opts: [['Besok dapat berapa?', 'besok'], ['Mantap!', 'bye']] },
     besok: { say: 'Hehe, itu rahasia tambang. Kadang banyak, kadang sedikit. Tunggu episode berikutnya!' },
     siapa: { say: '@huda_laper_buk dan @lilisrahmawati1838! Sudah ditagih sejak Day 1, akhirnya terwujud di Day 4.', opts: [['Terima kasih buat mereka!', 'makasih']] },
@@ -169,6 +185,64 @@ export const DIALOG = {
     mobil: { say: 'Waktu Day 3 ada warga yang rela jadi mobilnya, plus satu Gold. Hehe.' },
     bye: { say: 'Siap, {panggil}!' },
   } },
+  pedagang_buah: { name: 'Pedagang Buah', start: 'a', nodes: {
+    a: { say: 'Buah segar, buah segar! Mampir, {panggil}!', opts: [['Mau beli', 'shop:buah'], ['Pasar ini permintaan siapa?', 'siapa'], ['Lihat-lihat dulu', 'bye']] },
+    siapa: { say: 'Permintaan @dremholl76 di Day 5! Sejak ada pasar, daganganku laris manis.', opts: [['Mau beli', 'shop:buah'], ['Mantap!', 'bye']] },
+    bye: { say: 'Datang lagi ya, {panggil}!' },
+  } },
+  pedagang_sayur: { name: 'Pedagang Sayur', start: 'a', nodes: {
+    a: { say: 'Sayurnya baru dipetik dari sawah, {panggil}! Airnya dari bendungan, jadi segar terus.', opts: [['Mau beli', 'shop:sayur'], ['Ada kerjaan buatku?', 'kerja'], ['Sawahnya di mana?', 'sawah']] },
+    kerja: { say: 'Bantu panen padi di sawah, yuk! Kumpulkan 6 ikat padi yang berkilau sebelum waktunya habis.', opts: [['Gas panen!', 'job:panen'], ['Nanti dulu', 'bye']] },
+    sawah: { say: 'Di sebelah barat jalan, dekat bendungan. Permintaan @ondingondingonding3001!' },
+    bye: { say: 'Oke, mampir lagi!' },
+  } },
+  pedagang_mainan: { name: 'Pedagang Mainan', start: 'a', nodes: {
+    a: { say: 'Mainan dan barang lucu! Ada bola, layangan, payung...', opts: [['Mau beli', 'shop:mainan'], ['Ada yang lagi dicari warga?', 'cari'], ['Lihat-lihat dulu', 'bye']] },
+    cari: { say: 'Katanya Ucup lagi cari bola buat main di stadion. Hehe, kebetulan aku jual!', opts: [['Mau beli', 'shop:mainan'], ['Oke!', 'bye']] },
+    bye: { say: 'Dadah, {panggil}!' },
+  } },
+  pedagang_jajan: { name: 'Pedagang Jajanan', start: 'a', nodes: {
+    a: { say: 'Haus? Lapar? Es teh dan cilok siap, {panggil}!', opts: [['Mau beli', 'shop:jajan'], ['Ramai banget pasarnya', 'ramai'], ['Nanti saja', 'bye']] },
+    ramai: { say: 'Iya! Semua warga belanja di sini. Kas negeri aman, kami dagang jujur.' },
+    bye: { say: 'Siap, mampir lagi!' },
+  } },
+  penjual_roti: { name: 'Penjual Roti', start: 'a', nodes: {
+    a: { say: 'Roti hangat baru keluar dari oven, {panggil}!', opts: [['Mau beli', 'shop:roti'], ['Toko ini permintaan siapa?', 'siapa'], ['Nanti saja', 'bye']] },
+    siapa: { say: 'Permintaan des._0.0 di Day 5! Wanginya sampai ke gapura.' },
+    bye: { say: 'Datang lagi ya!' },
+  } },
+  penjual_seblak: { name: 'Penjual Seblak', start: 'a', nodes: {
+    a: { say: 'Seblak! Mau level berapa, {panggil}? Level 10 khusus yang berani.', opts: [['Mau beli', 'shop:seblak'], ['Ucup pernah ke sini?', 'ucup'], ['Nanti saja', 'bye']] },
+    ucup: { say: 'Pernah! Pesan level sepuluh, terus lari keliling pasar sambil teriak kepedasan. Hahaha!' },
+    bye: { say: 'Hati-hati, jangan kepedasan!' },
+  } },
+  penjual_padang: { name: 'Uda Nasi Padang', start: 'a', nodes: {
+    a: { say: 'Silakan, {panggil}! Rendang, ayam pop, semua ada.', opts: [['Mau beli', 'shop:padang'], ['Toko ini permintaan siapa?', 'siapa'], ['Nanti saja', 'bye']] },
+    siapa: { say: 'Permintaan kesatria_bebas di Day 5! Atapnya gonjong, kayak rumah gadang.' },
+    bye: { say: 'Jadi lai, {panggil}! Datang lagi!' },
+  } },
+  penjaga_safari: { name: 'Penjaga Safari', start: 'a', nodes: {
+    a: { say: 'Selamat datang di Taman Safari, {panggil}! Silakan masuk lewat gerbang.', opts: [['Singanya jinak?', 'singa'], ['Ada oleh-oleh?', 'shop:safari'], ['Ada kerjaan buatku?', 'kerja']] },
+    kerja: { say: 'Tolong beri makan 4 hewan yang sedang lapar di dalam kandang. Dekati saja hewannya!', opts: [['Siap!', 'job:pakan'], ['Nanti dulu', 'bye']] },
+    singa: { say: 'Jinak kok... asal jangan ditarik ekornya. Hehe.', opts: [['Ada oleh-oleh?', 'shop:safari'], ['Oke!', 'bye']] },
+    siapa: { say: 'Permintaan N🙅_ di Day 5. Sekaligus jadi tempat wisata pertama negeri!' },
+    bye: { say: 'Selamat berkeliling!' },
+  } },
+  pembeli_a: { name: 'Warga Belanja', start: 'a', nodes: {
+    a: { say: 'Wah, Raja ada di pasar! Eh, maksudnya... halo, {panggil}!', opts: [['Belanja apa?', 'apa'], ['Dadah!', 'bye']] },
+    apa: { say: 'Beli seblak level satu. Level sepuluh mah buat Ucup aja.' },
+    bye: { say: 'Dadah!' },
+  } },
+  pembeli_b: { name: 'Warga Belanja', start: 'a', nodes: {
+    a: { say: 'Dulu di dunia lama harga naik terus. Di sini harganya jujur!', opts: [['Iya, negeri tanpa korupsi', 'jujur'], ['Dadah!', 'bye']] },
+    jujur: { say: 'Katanya ada juragan yang mau nyogok Raja... tapi ditolak mentah-mentah! Keren.' },
+    bye: { say: 'Hati-hati di jalan!' },
+  } },
+  pembeli_c: { name: 'Warga Belanja', start: 'a', nodes: {
+    a: { say: 'Kamu sudah ke Taman Safari? Gerbangnya di ujung jalan sana.', opts: [['Belum, nanti ke sana', 'nanti'], ['Sudah!', 'sudah']] },
+    nanti: { say: 'Jangan lupa beli boneka singa buat oleh-oleh!' },
+    sudah: { say: 'Gajahnya besar banget ya! Aku sampai kaget.' },
+  } },
   kucing: { name: 'Kucing', start: 'a', nodes: {
     a: { say: 'Meong?', opts: [['Elus', 'elus'], ['Kasih ikan', '?ikan:ikan:kosong'], ['Ajak main', 'main']] },
     elus: { say: 'Purrr... (kucingnya memejamkan mata, senang)', fx: 'love' },
@@ -176,6 +250,108 @@ export const DIALOG = {
     kosong: { say: 'Meong? (kamu belum punya ikan. Coba mancing di sungai dulu!)' },
     main: { say: '(kucingnya mengejar ekornya sendiri... lalu tidur lagi)' },
   } },
+};
+
+// =====================================================================
+//  TOKO: dibuka dari dialog (pilihan 'shop:<kunci>'). Bayar pakai KOIN SAKU pemain (bukan Gold kas negeri!).
+//  Koin saku didapat dari mancing. kind: 'makan' (langsung dimakan) / 'barang' (masuk Tas)
+//  fx: 'pedas' = lari lebih cepat + asap merah · 'kuat' = lari lebih cepat · 'segar' / 'enak' = muncul hati
+// =====================================================================
+export const KOIN_AWAL = 50;
+export const KOIN_IKAN = { Umum: 5, Jarang: 12, Langka: 30, Lucu: 2, Legendaris: 150 };
+export const SHOPS = {
+  buah: { name: 'Lapak Buah', items: [
+    ['apel', 'Apel', '🍎', 5, 'makan', 'enak', 'Manis dan renyah'],
+    ['pisang', 'Pisang', '🍌', 4, 'makan', 'enak', 'Kesukaan Ucil'],
+    ['semangka', 'Semangka', '🍉', 12, 'makan', 'segar', 'Segar banget pas siang'],
+  ] },
+  sayur: { name: 'Lapak Sayur', items: [
+    ['jagung', 'Jagung Bakar', '🌽', 8, 'makan', 'enak', 'Dari sawah negeri'],
+    ['wortel', 'Wortel', '🥕', 4, 'barang', '', 'Katanya zebra suka wortel...'],
+  ] },
+  mainan: { name: 'Lapak Mainan', items: [
+    ['bola', 'Bola', '⚽', 25, 'barang', '', 'Ucup lagi cari bola!'],
+    ['layangan', 'Layangan', '🪁', 20, 'barang', '', 'Buat main di lapangan'],
+    ['payung', 'Payung', '☂️', 30, 'barang', '', 'Siaga kalau hujan'],
+  ] },
+  jajan: { name: 'Lapak Jajanan', items: [
+    ['esteh', 'Es Teh', '🧋', 5, 'makan', 'segar', 'Dingin dan manis'],
+    ['cilok', 'Cilok', '🍡', 8, 'makan', 'enak', 'Kenyal, pakai saus kacang'],
+  ] },
+  roti: { name: 'Toko Roti', items: [
+    ['roti', 'Roti Tawar', '🍞', 8, 'makan', 'enak', 'Hangat dari oven'],
+    ['roticoklat', 'Roti Cokelat', '🥐', 12, 'makan', 'enak', 'Lumer di mulut'],
+    ['donat', 'Donat', '🍩', 10, 'makan', 'enak', 'Bertabur gula'],
+  ] },
+  seblak: { name: 'Toko Seblak', items: [
+    ['seblak1', 'Seblak Level 1', '🍜', 10, 'makan', 'enak', 'Pedas sedikit'],
+    ['seblak5', 'Seblak Level 5', '🍜', 15, 'makan', 'kuat', 'Mulai berkeringat...'],
+    ['seblak10', 'Seblak Level 10', '🔥', 20, 'makan', 'pedas', 'Khusus yang berani! (lari jadi kencang)'],
+  ] },
+  padang: { name: 'Nasi Padang', items: [
+    ['rendang', 'Nasi Rendang', '🍛', 25, 'makan', 'kuat', 'Kenyang, tenaga penuh (lari lebih cepat)'],
+    ['ayampop', 'Nasi Ayam Pop', '🍗', 20, 'makan', 'enak', 'Gurih dan lembut'],
+  ] },
+  safari: { name: 'Oleh-oleh Safari', items: [
+    ['bonekasinga', 'Boneka Singa', '🦁', 60, 'barang', '', 'Kenang-kenangan Taman Safari'],
+    ['topisafari', 'Topi Safari', '👒', 40, 'barang', '', 'Gaya penjelajah'],
+    ['gantungan', 'Gantungan Jerapah', '🦒', 15, 'barang', '', 'Lucu dan murah'],
+  ] },
+};
+
+// Teleport dari peta besar: [nama, emoji, x, y] (posisi di depan tempatnya)
+export const TELEPORTS = [
+  ['Balai Kota', '🏛️', 0, 11.6],
+  ['Stadion', '🏟️', 0, 30.6],
+  ['Tambang Gold', '⛏️', 21.6, 14.0],
+  ['Tempat Wisata', '🎡', -23.6, 20.1],
+  ['Pasar', '🛒', 0, -31.0],
+  ['Taman Safari', '🦁', 10.8, -42.0],
+];
+
+// =====================================================================
+//  MISI & KERJA SAMBILAN · hadiah = KOIN SAKU pemain (bukan Gold kas negeri)
+//  goal.type: visit (selatan/safari/stadion/tambang) · eat (daftar toko) · give (barang@tokoh) · sign (papan nama Day 5)
+//             node (tokoh:simpul dialog) · job (jumlah kerja) · fish · buy · walk (meter) · photo · teleport · talkSeller
+// =====================================================================
+export const MAIN_MISSIONS = {
+  bab: 'Bab 5 · Jabatan Tidak Dijual',
+  list: [
+    { id: 'm1', title: 'Ke Kawasan Baru', desc: 'Lewati gapura selatan dan lihat kawasan baru Day 5.', goal: { type: 'visit', target: 'selatan' }, koin: 20 },
+    { id: 'm2', title: 'Cicipi Kios Day 5', desc: 'Makan di Toko Roti, Toko Seblak, dan Nasi Padang.', goal: { type: 'eat', target: ['roti', 'seblak', 'padang'] }, koin: 40,
+      // item gratis khusus misi (muncul paling atas di toko selama misi berjalan): [id, nama, emoji, kind, fx, teks]
+      free: { roti: ['roti', 'Roti Hangat', '🍞', 'makan', 'enak', '🎯 GRATIS untuk misi · traktiran Penjual Roti'],
+              seblak: ['seblak1', 'Seblak Level 1', '🍜', 'makan', 'enak', '🎯 GRATIS untuk misi · cicipi dulu yang ringan'],
+              padang: ['rendang', 'Nasi Rendang', '🍛', 'makan', 'kuat', '🎯 GRATIS untuk misi · traktiran Uda'] } },
+    { id: 'm3', title: 'Bola untuk Ucup', desc: 'Beli bola di Lapak Mainan pasar, lalu berikan ke Ucup di dekat Balai Kota.', goal: { type: 'give', target: 'bola@ucup' }, koin: 35,
+      free: { mainan: ['bola', 'Bola untuk Ucup', '⚽', 'barang', '', '🎯 GRATIS untuk misi · titipan buat Ucup'] } },
+    { id: 'm4', title: 'Pemburu Papan Nama', desc: 'Temukan 8 papan nama peminta bangunan Day 5.', goal: { type: 'sign', target: 'day5', n: 8 }, koin: 60, badge: ['papan', '🪧', 'Pemburu Papan'] },
+    { id: 'm5', title: 'Kerja Bakti', desc: 'Selesaikan 2 kerja sambilan (tanya pedagang sayur, penambang, atau penjaga safari).', goal: { type: 'job', n: 2 }, koin: 50 },
+    { id: 'm6', title: 'Lowongan Menteri', desc: 'Tanya Bocil SCP: siapa yang jadi menteri?', goal: { type: 'node', target: 'wakil:menteri' }, koin: 30, badge: ['day5', '👑', 'Anti Sogok (Day 5)'] },
+  ],
+};
+// Misi harian: tiap hari dipilih 3 secara acak. Selesai semua = bonus.
+export const DAILY_BONUS = 25;
+export const DAILY_POOL = [
+  { id: 'd_ikan', title: 'Tangkap 3 ikan', goal: { type: 'fish', n: 3 }, koin: 20 },
+  { id: 'd_jalan', title: 'Jalan-jalan 400 meter', goal: { type: 'walk', n: 400 }, koin: 15 },
+  { id: 'd_ngobrol', title: 'Ngobrol dengan 3 pedagang', goal: { type: 'talkSeller', n: 3 }, koin: 15 },
+  { id: 'd_jajan', title: 'Beli 2 barang atau makanan', goal: { type: 'buy', n: 2 }, koin: 10 },
+  { id: 'd_foto', title: 'Ambil 2 foto', goal: { type: 'photo', n: 2 }, koin: 10 },
+  { id: 'd_kerja', title: 'Selesaikan 1 kerja sambilan', goal: { type: 'job', n: 1 }, koin: 20 },
+  { id: 'd_safari', title: 'Masuk ke kandang Taman Safari', goal: { type: 'visit', target: 'safari' }, koin: 10 },
+  { id: 'd_stadion', title: 'Kunjungi Stadion', goal: { type: 'visit', target: 'stadion' }, koin: 10 },
+  { id: 'd_tambang', title: 'Kunjungi Tambang Gold', goal: { type: 'visit', target: 'tambang' }, koin: 10 },
+  { id: 'd_teleport', title: 'Teleport 2 kali dari peta', goal: { type: 'teleport', n: 2 }, koin: 10 },
+];
+// Kerja sambilan: datangi titik-titik berkilau sebelum waktu habis. Bisa diulang (jeda 'cd' detik).
+export const JOBS = {
+  panen: { name: 'Panen Padi', em: '🌾', desc: 'Kumpulkan ikat padi di sawah', time: 70, koin: 15, cd: 60, act: 1.6, verb: 'Panen',
+    points: 'acak', area: [-14.5, -7.8, -42.2, -36.2], n: 6, label: 'ikat padi' },
+  angkut: { name: 'Angkut Emas', em: '💰', desc: 'Bawa karung emas dari tambang ke gudang', time: 90, koin: 25, cd: 90, act: 1.3, verb: ['Angkat karung', 'Simpan emas'],
+    points: [[23.4, 14.0], [25.2, 21.1], [23.4, 14.0], [25.2, 21.1], [23.4, 14.0], [25.2, 21.1]], label: 'antaran', pair: true },
+  pakan: { name: 'Beri Makan Hewan', em: '🥕', desc: 'Dekati 4 hewan yang lapar', time: 70, koin: 15, cd: 60, act: 1.6, verb: 'Beri makan',
+    points: [[18.9, -38.8], [20.1, -43.6], [15.9, -41.0], [17.5, -46.0]], label: 'hewan', reach: 1.7 },
 };
 
 // Profil tokoh (tab "Tokoh"). Tokoh selain Slime/Ucil/Ucup terbuka setelah diajak ngobrol.
@@ -218,6 +394,7 @@ export const EPISODES = [
   { day: 'Day 2', title: '400 Gold dari kalian', text: 'Rumah Ucup, Pos Ronda, Sekolah, dan Rumah Sakit berdiri. Bocil SCP jadi Wakil Menteri Pembangunan. Tapi bayangan bertopi tinggi terlihat di dekat gudang Gold...' },
   { day: 'Day 3', title: 'Boss menyerang', text: 'Dia menyerang gudang Gold, tapi warga melawan dengan obor dan Papan Kas Negeri membakarnya. Pagar, Pos Damkar, Jalan, Warkop, Ladang, dan Kolam Lele berdiri. Balai Kota gagal, kurang 7 Gold!' },
   { day: 'Day 4', title: 'Bangun besar-besaran', text: '680 Gold, ditambah bonus 1000 Gold dari Tambang. 65 rumah gotong royong dan 11 bangunan baru berdiri, termasuk Balai Kota, Stadion, dan Hotel.' },
+  { day: 'Day 5', title: 'Jabatan Tidak Dijual', text: 'Juragan menyogok 5.000 Gold supaya jadi menteri, Raja bilang TIDAK! Tambang memberi 2.000 Gold. Kawasan selatan dibuka: Pasar, Toko Roti, Seblak, Nasi Padang, Bendungan, Pembangkit Listrik, Sawah, dan Taman Safari.' },
 ];
 
 // Ikan di sungai: [kunci, nama, emoji, kelangkaan, bobot peluang, ukuran min-max (cm)]

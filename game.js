@@ -1,24 +1,41 @@
+// © Dunia Impianmu (@DuniaImpianmu · @dunia_impianmu). Hak cipta dilindungi. Dilarang menyalin, mengubah,
+// atau menerbitkan ulang kode, model, audio, dan cerita game ini tanpa izin tertulis.
 // Dunia Impianmu: jalan-jalan di negeri. Koordinat data = Blender (x, y, z-atas) -> three (x, z, -y).
 // Teks (info bangunan, dialog, profil, cerita, ikan, link) ada di data.js.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { DAY, STATUS, LINKS, INFO, DIALOG, PROFILES, STORY, RULES, EPISODES, FISH } from './data.js';
+import { DAY, STATUS, LINKS, INFO, DIALOG, PROFILES, STORY, RULES, EPISODES, FISH, KOIN_AWAL, KOIN_IKAN, SHOPS, TELEPORTS, MAIN_MISSIONS, DAILY_POOL, DAILY_BONUS, JOBS } from './data.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const touch = matchMedia('(pointer: coarse)').matches;
+// Mode pengembang (alat tes & rekam video) hanya aktif di laptop sendiri, tidak di website online.
+const DEV = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+const CAPTURE = DEV && new URLSearchParams(location.search).has('capture');
+// Tolak ditampilkan di dalam website lain (iframe) supaya tidak bisa dibajak/ditempel situs palsu.
+if (!DEV && window.top !== window.self) { try { window.top.location.replace(location.href); } catch { document.documentElement.innerHTML = '<p style="font:18px sans-serif;padding:24px">Mainkan Dunia Impianmu langsung di <a href="https://duniaimpianmu.my.id" target="_top">duniaimpianmu.my.id</a></p>'; } throw new Error('dibuka di dalam iframe'); }
+const CAP = { cam: null, input: null, forceFish: null };   // dipakai mode rekam video promosi
+const touch = !CAPTURE && matchMedia('(pointer: coarse)').matches;
+if (CAPTURE) document.body.classList.add('capture');
 if (touch) document.body.classList.add('touch');
 const store = { get(k, d) { try { const v = localStorage.getItem('di_' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('di_' + k, JSON.stringify(v)); } catch {} } };
 const SET = Object.assign({ music: 0.8, sfx: 0.8, gfx: touch ? 'rendah' : 'tinggi', cam: 1, weather: 'auto' }, store.get('set', {}));
 const saveSet = () => store.set('set', SET);
-const STATS = Object.assign({ dist: 0, photos: 0, time: 0, talked: [], caught: {}, seenDia: false }, store.get('stats', {}));
+const STATS = Object.assign({ dist: 0, photos: 0, time: 0, talked: [], caught: {}, seenDia: false, koin: KOIN_AWAL, bag: {}, given: [], eaten: 0 }, store.get('stats', {}));
+// Data simpanan rusak/diutak-atik -> kembalikan ke bentuk yang benar supaya game tidak error.
+{ const num = (v, d, max = 1e9) => (Number.isFinite(v) && v >= 0 ? Math.min(v, max) : d), obj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+  STATS.koin = Math.floor(num(STATS.koin, KOIN_AWAL, 999999)); for (const k of ['dist', 'photos', 'time', 'eaten']) STATS[k] = num(STATS[k], 0);
+  for (const k of ['talked', 'given']) if (!Array.isArray(STATS[k])) STATS[k] = [];
+  for (const k of ['caught', 'bag']) if (!obj(STATS[k])) STATS[k] = {};
+  for (const k in STATS.bag) STATS.bag[k] = Math.floor(num(STATS.bag[k], 0, 999)); }
 const saveStats = () => store.set('stats', STATS);
 let toastT = 0;
 function toast(msg, sec = 2.2) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); toastT = sec; }
 const easeOutBack = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
 $('#dayLbl').textContent = `DAY ${DAY}`;
-$('#stats').innerHTML = `Gold <b>${STATUS.gold}</b><br>Warga <b>${STATUS.warga}</b><br>Rumah <b>${STATUS.rumah}</b>`;
+function renderStats() { $('#stats').innerHTML = `Gold <b>${STATUS.gold}</b><br>Warga <b>${STATUS.warga}</b><br>Rumah <b>${STATUS.rumah}</b><div class="koin">🪙 Koinku <b>${STATS.koin}</b></div>`; }
+renderStats();
+function addKoin(n) { STATS.koin = Math.max(0, STATS.koin + n); saveStats(); renderStats(); }
 $('#socials').innerHTML = LINKS.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener"><i style="background:${l.color}">${l.icon}</i>${esc(l.name)}</a>`).join('');
 
 // ------------------------------------------------------------------ renderer & scene
@@ -75,6 +92,13 @@ const loadGLB = (u) => new Promise((res, rej) => loader.load(u, res, undefined, 
 const L = await (await fetch('./layout.json')).json();
 L.items = L.items.filter((it) => Math.min(...it.s) > 0.02);   // buang benda yang sudah 'tenggelam' (pagar lama Day 3)
 const GATE = { x: 0, y: L.fence.c[1] - L.fence.r, half: 2.4 };
+const ZONE = L.zone || null;                   // kawasan selatan Day 5 (di luar pagar): [x0, x1, y0, y1]
+const EXTRA = L.extra || [];                   // penghalang bangunan prosedural (pasar, bendungan, dll.)
+const RIVER_END = ZONE ? -47.5 : -1e9;          // sungai berakhir di bendungan, di bawahnya waduk
+const extraColor = (k) => ({ waduk: '#4aa8e0', tower: '#9aa3b5', safari_pagar: '#a8743a', safari_gerbang: '#7a4a1a', hewan: null, safari_pohon: null, safari_batu: null, safari_kolam: '#4aa8e0' }[k] ?? '#ffcf3a');
+const ZONE_AVOID = [[-16, -5, -43.5, -35], [10, 25, -49, -35]];   // sawah & taman safari (rumput tidak tumbuh)
+const inBox = (x, y, e, pad = 0) => { const dx = x - e.p[0], dy = y - e.p[1], c = Math.cos(-e.r), s = Math.sin(-e.r), lx = dx * c - dy * s, ly = dx * s + dy * c;
+  return lx > e.b[0] - pad && lx < e.b[1] + pad && ly > e.b[2] - pad && ly < e.b[3] + pad; };
 { // tutup celah pagar (tempat sungai lewat); di gerbang selatan diberi gapura
   const C = L.fence.c, R = L.fence.r, step = (2 * Math.PI) / Math.floor((2 * Math.PI * R) / 2.0);
   const fen = L.items.filter((it) => it.a === 'pagar'), s = fen[0]?.s || [1, 1, 1];
@@ -227,27 +251,29 @@ const segDist = (px, py, a, b) => {
 };
 const onRoad = (x, y, pad = 0) => ROADS.some(([a, b, w]) => segDist(x, y, a, b) < w / 2 + pad);
 const riverX = (y) => -21 + 1.6 * Math.sin(y / 7);
-const inRiver = (x, y, pad = 0) => Math.abs(x - riverX(y)) < 1.6 + pad;
+const inRiver = (x, y, pad = 0) => y > RIVER_END && Math.abs(x - riverX(y)) < 1.6 + pad;
 let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const GRASS = [];
+const Y0 = ZONE ? ZONE[2] + 1 : -32;
 function scatter(n, geo, color, yOff, avoid) {
   const im = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 1 }), n);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3();
   let k = 0;
   for (let i = 0; i < n * 3 && k < n; i++) {
-    const x = -40 + rnd() * 80, y = -32 + rnd() * 82;
+    const x = -40 + rnd() * 80, y = Y0 + rnd() * (50 - Y0);
     if (avoid(x, y)) continue;
     const sc = 0.6 + rnd() * 0.7; s.set(sc, sc, sc); q.setFromAxisAngle(UP, rnd() * 6.3);
     m.compose(B2T(x, y, yOff * sc), q, s); im.setMatrixAt(k++, m);
   }
   im.count = k; im.userData.full = k; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); GRASS.push(im);
 }
-const avoidG = (x, y) => onRoad(x, y, 0.05) || inRiver(x, y, 1.0) || x * x + (y - 0.4) ** 2 < 6;
-const cone = new THREE.ConeGeometry(0.045, 0.24, 3);
-scatter(touch ? 9000 : 16000, cone, '#6fbf4f', 0.12, avoidG);
-scatter(touch ? 5000 : 9000, cone, '#86d663', 0.12, avoidG);
+const avoidG = (x, y) => onRoad(x, y, 0.05) || inRiver(x, y, 1.0) || x * x + (y - 0.4) ** 2 < 6 ||
+  (y < GATE.y && (!ZONE || x < ZONE[0] || x > ZONE[1] || y < ZONE[2] + 1 || ZONE_AVOID.some(([a, b, c, d]) => x > a && x < b && y > c && y < d) || EXTRA.some((e) => inBox(x, y, e, 0.2))));
+const cone = new THREE.ConeGeometry(0.045, 0.24, 3), GK = ZONE ? 1.35 : 1;
+scatter(Math.round((touch ? 9000 : 16000) * GK), cone, '#6fbf4f', 0.12, avoidG);
+scatter(Math.round((touch ? 5000 : 9000) * GK), cone, '#86d663', 0.12, avoidG);
 const ball = new THREE.IcosahedronGeometry(0.05, 0);
-scatter(450, ball, '#ffe066', 0.05, avoidG); scatter(450, ball, '#ff9ec4', 0.05, avoidG);
+scatter(Math.round(450 * GK), ball, '#ffe066', 0.05, avoidG); scatter(Math.round(450 * GK), ball, '#ff9ec4', 0.05, avoidG);
 
 // lampu jalan
 const glowMat = new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, fog: false });
@@ -256,6 +282,7 @@ for (const it of L.items) if (it.a === 'lampu' && it.h) { const sp = new THREE.S
 // ------------------------------------------------------------------ tabrakan (bidang XY Blender)
 const COLL = L.items.filter((it) => it.c).map((it) => { const o = { x: it.p[0], y: it.p[1], r: it.r, c: it.c, cos: Math.cos(-it.r), sin: Math.sin(-it.r), it }; it._coll = o; return o; });
 for (const sx of [-1, 1]) COLL.push({ x: GATE.x + sx * GATE.half, y: GATE.y + 0.4, r: 0, c: { b: [-0.35, 0.35, -0.35, 0.35] }, cos: 1, sin: 0 });
+for (const e of EXTRA) COLL.push({ x: e.p[0], y: e.p[1], r: e.r, c: { b: e.b }, cos: Math.cos(-e.r), sin: Math.sin(-e.r), k: e.k });
 const DYN = [];   // penghalang dinamis (Slime NPC, kucing)
 const BRIDGES = L.items.filter((it) => it.a === 'jembatan').map((it) => ({ x: it.p[0], y: it.p[1] }));
 const FC = L.fence.c, FR = L.fence.r - 0.9;
@@ -288,9 +315,24 @@ function collide(px, py, R) {
       if (d < m && d > 1e-6) { px = o.x + (dx / d) * m; py = o.y + (dy / d) * m; }
     }
   }
+  return bound(px, py);
+}
+// batas dunia: di dalam pagar bundar, atau (Day 5) kawasan selatan yang hanya bisa dimasuki lewat gapura
+const FO = L.fence.r + 0.9;
+const inZone = (x, y) => ZONE && x > ZONE[0] + 1 && x < ZONE[1] - 1 && y > ZONE[2] + 1 && y < GATE.y + 4;
+const atGate = (x, y) => Math.abs(x - GATE.x) < GATE.half - 0.4 && Math.abs(y - GATE.y) < 2.5;
+function bound(px, py) {
   const fx = px - FC[0], fy = py - FC[1], fd = Math.hypot(fx, fy);
-  if (fd > FR) { px = FC[0] + (fx / fd) * FR; py = FC[1] + (fy / fd) * FR; }
-  return [px, py];
+  if (fd <= FR || atGate(px, py)) return [px, py];
+  if (ZONE) {
+    // di luar pagar: jepit ke kotak kawasan selatan
+    const qx = THREE.MathUtils.clamp(px, ZONE[0] + 1, ZONE[1] - 1), qy = THREE.MathUtils.clamp(py, ZONE[2] + 1, GATE.y + 4);
+    const qd = Math.hypot(qx - FC[0], qy - FC[1]);
+    if (qd >= FO) return [qx, qy];
+    // sedang menempel di pagar: dorong ke sisi terdekat (dalam / luar)
+    if (fd > (FR + FO) / 2 && inZone(px, py)) return [FC[0] + (fx / fd) * FO, FC[1] + (fy / fd) * FO];
+  }
+  return [FC[0] + (fx / fd) * FR, FC[1] + (fy / fd) * FR];
 }
 const isFree = (x, y, r) => { const [qx, qy] = collide(x, y, r); return Math.hypot(qx - x, qy - y) < 0.02 && !onRoad(x, y, r) && !inRiver(x, y, 0.6); };
 
@@ -343,9 +385,9 @@ const CHARS = [{ id: 'slime', name: 'Slime', s: 1.0 }, { id: 'ucil', name: 'Ucil
 const body = new THREE.Group(); scene.add(body);
 let avatar = null, avatarH = 1, PR = 0.45, charId = store.get('char', 'slime'), charAnim = 1, oldAv = null, oldT = 0;
 if (!CHARS.some((c) => c.id === charId)) charId = 'slime';
-const P = { x: 0, y: -1.2, vz: 0, z: 0, face: Math.PI };
-const slimeNPC = { g: meshGroup('slime'), x: 0, y: 0.2 };
-slimeNPC.g.position.copy(B2T(slimeNPC.x, slimeNPC.y)); slimeNPC.g.visible = false; scene.add(slimeNPC.g);
+const P = { x: 0, y: L.slime ? 10.4 : -1.2, vz: 0, z: 0, face: Math.PI };
+const slimeNPC = { g: meshGroup('slime'), x: L.slime ? L.slime[0] : 0, y: L.slime ? L.slime[1] : 0.2 };
+slimeNPC.g.position.copy(B2T(slimeNPC.x, slimeNPC.y)); slimeNPC.g.rotation.y = L.slime?.[2] ?? 0; slimeNPC.g.visible = false; scene.add(slimeNPC.g);
 DYN.push((slimeNPC.coll = { x: slimeNPC.x, y: slimeNPC.y, r: 0.45, off: true }));
 const statics = Object.fromEntries(['ucil', 'ucup'].map((n) => [n, (byAsset[n] || [])[0]]));
 let nameTag = null;
@@ -532,7 +574,7 @@ const lineG = new THREE.BufferGeometry().setAttribute('position', new THREE.Buff
 const fLine = new THREE.Line(lineG, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 })); fLine.frustumCulled = false; fLine.visible = false; scene.add(fLine);
 const FISHING = { state: 'idle', t: 0, wait: 0, win: 1, spot: null, bx: 0, by: 0 };
 const totalW = FISH.reduce((s, f) => s + f[4], 0);
-function rollFish() { let r = Math.random() * totalW; for (const f of FISH) { r -= f[4]; if (r <= 0) return f; } return FISH[0]; }
+function rollFish() { if (CAP.forceFish) return FISH.find((f) => f[0] === CAP.forceFish) || FISH[0]; let r = Math.random() * totalW; for (const f of FISH) { r -= f[4]; if (r <= 0) return f; } return FISH[0]; }
 function startFishing(spot) {
   Object.assign(FISHING, { state: 'cast', t: 0, spot, bx: riverX(spot.y) + 0.75, by: spot.y + (Math.random() - 0.5) * 0.6 });
   P.x = spot.x; P.y = spot.y; P.face = Math.atan2(FISHING.bx - P.x, -(FISHING.by - P.y));
@@ -551,7 +593,8 @@ function landFish() {
   const RC = { Umum: '#5aa469', Jarang: '#2a6db0', Langka: '#9b4dca', Lucu: '#e07a5f', Legendaris: '#d99a00' };
   const box = $('#catch'); box.querySelector('.em').textContent = em; box.querySelector('h3').textContent = name;
   const r = box.querySelector('.rar'); r.textContent = rar; r.style.background = RC[rar] || '#888';
-  box.querySelector('p').textContent = `Panjang ${size} cm${isNew ? ' · Jenis baru! 📖' : best ? ' · Rekor baru! 🏆' : ''}`;
+  const kn = KOIN_IKAN[rar] || 0; if (kn) addKoin(kn); ev('fish', rar);
+  box.querySelector('p').textContent = `Panjang ${size} cm${isNew ? ' · Jenis baru! 📖' : best ? ' · Rekor baru! 🏆' : ''}${kn ? ` · +${kn} 🪙` : ''}`;
   box.classList.add('on'); sfx(rar === 'Legendaris' ? 'shimmer' : 'coin', 0.6); if (rar === 'Legendaris') sfx('tring', 0.6);
   stopFishing();
 }
@@ -580,7 +623,7 @@ function updateFishing(dt, t) {
 }
 
 // ------------------------------------------------------------------ ngobrol berpilihan & aksi (E / tombol)
-const TALKERS = L.items.filter((it) => it.a in DIALOG).map((it) => ({ key: it.a, it, x: it.p[0], y: it.p[1], h: it.h || 1 }));
+const TALKERS = L.items.filter((it) => (it.d || it.a) in DIALOG).map((it) => ({ key: it.d || it.a, it, x: it.p[0], y: it.p[1], h: it.h || 1 }));
 TALKERS.push({ key: 'slime', npc: slimeNPC, x: slimeNPC.x, y: slimeNPC.y, h: 0.9 });
 for (const c of CATS) TALKERS.push(c);
 const talkEl = $('#talk'), promptEl = $('#prompt'), actBtn = $('#actBtn'), optsEl = talkEl.querySelector('.opts');
@@ -594,6 +637,7 @@ function faceTalker(t) {
 function talk(t) {
   const d = DIALOG[t.key]; if (!d) return;
   talking = t; sfx('ding', 0.5); document.body.classList.add('talking'); releaseAll();
+  ev('talk', t.key);
   if (PROFILES.some((p) => p.key === t.key) && !STATS.talked.includes(t.key)) { STATS.talked.push(t.key); saveStats(); toast(`📖 Profil tokoh terbuka: ${d.name}`, 2.4); }
   if (t.key !== 'kucing') faceTalker(t);
   talkEl.querySelector('.who').textContent = d.name; talkEl.classList.add('on'); $('#info').classList.remove('on');
@@ -602,19 +646,44 @@ function talk(t) {
 function showNode(id) {
   const d = DIALOG[talking.key]; node = d.nodes[id];
   if (!node) { endTalk(); return; }
+  ev('node', talking.key + ':' + id);
   typeText = node.say.replaceAll('{panggil}', panggilFor(d)); typeT = 0; optSel = 0; optsShown = false;
   talkEl.querySelector('.say').textContent = ''; optsEl.innerHTML = ''; talkEl.querySelector('.next').textContent = '';
+  if (node.give) {
+    const it = node.give;
+    if ((STATS.bag[it] || 0) > 0) { STATS.bag[it]--; ev('give', it + '@' + talking.key); if (!STATS.given.includes(talking.key + ':' + it)) { STATS.given.push(talking.key + ':' + it); if (node.koin) { addKoin(node.koin); toast(`🎁 Hadiah: +${node.koin} Koin!`, 2.4); sfx('coin', 0.6); } } saveStats(); }
+    const p = (talking.it ? B2T(talking.x, talking.y, talking.h) : talking.npc ? talking.npc.g.position.clone() : null); if (p) fx(heartTex, p, { n: 6, size: 0.2, speed: 0.5, up: 1.0, life: 1.2, grow: 0.3 });
+  }
   if (node.fx === 'love' && talking.g) { const p = talking.g.position.clone(); p.y += 0.45; fx(heartTex, p, { n: 5, size: 0.18, speed: 0.4, up: 1.0, life: 1.2, grow: 0.3 }); }
+}
+// opsi dialog untuk misi aktif -> 'misi' (emas berkilau); opsi kerja sambilan di luar misi -> 'kerja' (hijau)
+function isJobOpt(t) { return !!t && (t.startsWith('job:') || (t === 'kerja' && !!DIALOG[talking?.key]?.nodes?.kerja)); }
+function optKind(t) {
+  if (!t || !talking) return '';
+  const g = curMain()?.goal, who = talking.key;
+  if (g) {
+    if (g.type === 'job' && isJobOpt(t)) return 'misi';
+    if (g.type === 'eat' && t.startsWith('shop:') && g.target.includes(t.slice(5)) && !MS_.prog.set.includes(t.slice(5))) return 'misi';
+    if (g.type === 'give') { const [item, to] = g.target.split('@'), has = (STATS.bag[item] || 0) > 0;
+      if (!has && t === 'shop:mainan') return 'misi'; if (has && who === to && t.startsWith('?punya:' + item)) return 'misi'; }
+    if (g.type === 'node') { const [k, n] = g.target.split(':'); if (who === k && t === n) return 'misi'; }
+  }
+  if (isJobOpt(t)) return STATS.daily.list.some((d) => !d.done && dailyDef(d.id)?.goal.type === 'job') ? 'misi' : 'kerja';
+  return '';
 }
 function renderOpts() {
   optsShown = true; const opts = node.opts || [];
-  optsEl.innerHTML = opts.map(([txt], i) => `<button data-i="${i}" class="${i === optSel ? 'sel' : ''}"><i>${i + 1}</i><span>${esc(txt)}</span></button>`).join('');
-  talkEl.querySelector('.next').textContent = opts.length ? (touch ? 'Ketuk jawabanmu' : 'Pilih 1–3 atau ↑ ↓ lalu E') : (touch ? 'Ketuk untuk menutup ✕' : 'E untuk menutup ✕');
+  const TAG = { misi: '<em>🎯 MISI</em>', kerja: '<em>🪙 KERJA</em>' };
+  optsEl.innerHTML = opts.map(([txt, t], i) => { const k = optKind(t); return `<button data-i="${i}" class="${i === optSel ? 'sel' : ''} ${k}"><i>${i + 1}</i><span>${esc(txt)}</span>${TAG[k] || ''}</button>`; }).join('');
+  talkEl.querySelector('.next').textContent = opts.length ? (touch ? 'Ketuk jawabanmu' : 'Pilih 1–3 atau ↑ ↓ lalu Spasi') : (touch ? 'Ketuk untuk menutup ✕' : 'Spasi untuk menutup ✕');
 }
 function choose(i) {
   const o = node?.opts?.[i]; if (!o) { endTalk(); return; }
   sfx('pop_soft', 0.6); let target = o[1];
   if (target && target.startsWith('?ikan:')) { const [, a, b] = target.split(':'); target = Object.keys(STATS.caught).length ? a : b; }
+  if (target && target.startsWith('?punya:')) { const [, item, a, b] = target.split(':'); target = (STATS.bag[item] || 0) > 0 ? a : b; }
+  if (target && target.startsWith('shop:')) { endTalk(); openShop(target.slice(5)); return; }
+  if (target && target.startsWith('job:')) { endTalk(); startJob(target.slice(4)); return; }
   if (!target) { endTalk(); return; } showNode(target);
 }
 function dialogConfirm() {
@@ -627,6 +696,8 @@ function endTalk() { talking = null; node = null; talkEl.classList.remove('on');
 function doAction() {
   if (talking) { dialogConfirm(); return; }
   if (ui()) return;
+  if (JOB.id && JOB.act) return;
+  if (JOB.id && JOB.near != null) { startAct(); return; }
   if (FISHING.state !== 'idle') { reel(); return; }
   if (near?.spot) startFishing(near.spot); else if (near) talk(near);
 }
@@ -640,7 +711,12 @@ function updateNear(dt) {
     for (const s of SPOTS) { const d = Math.hypot(P.x - s.x, P.y - s.y); if (d < Math.min(bd, 1.6)) { bd = d; best = { spot: s, x: s.x, y: s.y, h: 1.2 }; } }
     if (!(near?.spot && best?.spot && near.spot === best.spot)) near = best;
   }
-  const fishing = FISHING.state !== 'idle';
+  const fishing = FISHING.state !== 'idle', jn = JOB.id && JOB.near != null && !JOB.act && !talking;
+  if (jn) { const q = JOB.pts[JOB.near], v = B2T(q[0], q[1], groundAt(q[0], q[1]) + 1.3).project(camera);
+    actBtn.classList.add('on'); actBtn.classList.remove('hot'); actBtn.textContent = jobVerb().toUpperCase();
+    if (v.z < 1) { promptEl.style.display = 'block'; promptEl.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; promptEl.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+      promptEl.innerHTML = `${JOBS[JOB.id].em} ${esc(jobVerb())}${touch ? '' : ' <b>(E)</b>'}`; } else promptEl.style.display = 'none';
+    return; }
   actBtn.classList.toggle('on', !!near || fishing); actBtn.classList.toggle('hot', FISHING.state === 'bite');
   actBtn.textContent = fishing ? 'TARIK!' : near?.spot ? 'MANCING' : 'NGOBROL';
   if (near && !talking) {
@@ -696,7 +772,7 @@ function updateRain(dt, wet) {
 // ------------------------------------------------------------------ siang & malam (+ bayangan misterius)
 const CYCLE = 300;
 let dayT = 0, nCur = 0;
-const egg = { t: 30, on: 0 };
+const egg = { t: CAPTURE ? 1e9 : 30, on: 0 };
 const nightAt = (t) => { t %= CYCLE; if (t < 170) return 0; if (t < 200) return (t - 170) / 30; if (t < 280) return 1; return 1 - (t - 280) / 20; };
 const C = (h) => new THREE.Color(h);
 const SKY = { dayTop: C('#6fb6ff'), dayBot: C('#fff1d6'), duskBot: C('#ffb27a'), nightTop: C('#070b26'), nightBot: C('#1b2350'), fogDay: C('#cfe6ff'), fogNight: C('#111833'), stormTop: C('#7d8899'), stormBot: C('#b9c0c9') };
@@ -755,7 +831,7 @@ async function takePhoto() {
   const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.92));
   const url = URL.createObjectURL(blob), box = $('#photo'); box.querySelector('img').src = url; box.classList.add('on'); box._blob = blob; box._url = url;
   $('#pShare').style.display = navigator.canShare && navigator.canShare({ files: [new File([blob], 'x.jpg', { type: 'image/jpeg' })] }) ? '' : 'none';
-  STATS.photos++; saveStats();
+  STATS.photos++; saveStats(); ev('photo');
 }
 $('#pSave').onclick = () => { const b = $('#photo'), a = document.createElement('a'); a.href = b._url; a.download = `dunia-impianmu-${Date.now()}.jpg`; document.body.appendChild(a); a.click(); a.remove(); sfx('tring', 0.5); };
 $('#pShare').onclick = async () => { const b = $('#photo'); try { await navigator.share({ files: [new File([b._blob], 'dunia-impianmu.jpg', { type: 'image/jpeg' })], text: 'Jalan-jalan di Dunia Impianmu! @dunia_impianmu' }); } catch {} };
@@ -770,7 +846,7 @@ function applyGfx() {
 }
 
 // ------------------------------------------------------------------ menu (profil, tokoh, ikan, tentang, pengaturan, ikuti)
-const TABS = [['aku', '👤 Aku'], ['tokoh', '📖 Tokoh'], ['ikan', '🎣 Ikan'], ['tentang', '🏰 Tentang'], ['atur', '⚙️ Atur'], ['ikuti', '❤️ Ikuti']];
+const TABS = [['aku', '👤 Aku'], ['misi', '🎯 Misi'], ['tas', '🎒 Tas'], ['tokoh', '📖 Tokoh'], ['ikan', '🎣 Ikan'], ['tentang', '🏰 Tentang'], ['atur', '⚙️ Atur'], ['ikuti', '❤️ Ikuti']];
 let menuTab = 'aku';
 const fmtTime = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h} jam ${m} menit` : `${m} menit`; };
 function openMenu(tab = menuTab) { menuTab = tab; $('#menu').classList.add('on'); renderMenu(); releaseAll(); }
@@ -791,6 +867,12 @@ function renderMenu() {
       <div class="statrow"><span>📷 Foto diambil</span><b>${STATS.photos}</b></div>
       <div class="statrow"><span>💬 Tokoh dikenal</span><b>${open}/${prof}</b></div>
       <div class="statrow"><span>⏱️ Lama main</span><b>${fmtTime(STATS.time)}</b></div>`;
+  } else if (menuTab === 'misi') { h += missionMenuHTML();
+  } else if (menuTab === 'tas') {
+    const all = Object.values(SHOPS).flatMap((sh) => sh.items), own = all.filter(([id]) => (STATS.bag[id] || 0) > 0);
+    h += `<h2>Tasku</h2><p>🪙 Koin saku: <b>${STATS.koin}</b>. Koin didapat dari <b>mancing</b>, lalu bisa dibelanjakan di pasar, kios, dan Taman Safari. (Koin saku beda dengan Gold kas negeri!)</p><h4>Barang</h4>`;
+    h += own.length ? `<div class="grid">${own.map(([id, nm, em, , , , ds]) => `<div class="tcard"><b>${em} ${esc(nm)} ×${STATS.bag[id]}</b><small>${esc(ds)}</small></div>`).join('')}</div>` : '<p>Tasmu masih kosong. Coba mampir ke pasar di selatan gapura!</p>';
+    h += `<h4>Catatan</h4><div class="statrow"><span>🍽️ Makanan dimakan</span><b>${STATS.eaten}</b></div>`;
   } else if (menuTab === 'tokoh') {
     h += `<h2>Buku Tokoh</h2><p>Ajak ngobrol tokoh di negeri untuk membuka profilnya.</p><div class="grid">`;
     for (const p of PROFILES) {
@@ -810,7 +892,8 @@ function renderMenu() {
     h += `<h2>Dunia Impianmu</h2>${STORY.split(/\n\s*\n/).map((p) => `<p>${esc(p.trim())}</p>`).join('')}
       <h4>Aturan negeri</h4><div class="rules">${RULES.map(([i, t]) => `<div>${i} ${esc(t)}</div>`).join('')}</div>
       <h4>Status negeri (Day ${DAY})</h4><div class="rules"><div>🪙 Gold: <b>${STATUS.gold}</b> · 👥 Warga: <b>${STATUS.warga}</b> · 🏠 Rumah: <b>${STATUS.rumah}</b></div></div>
-      <h4>Episode</h4>${EPISODES.map((e) => `<div class="ep"><b>${esc(e.day)}</b> · <em>${esc(e.title)}</em><br><span>${esc(e.text)}</span></div>`).join('')}`;
+      <h4>Episode</h4>${EPISODES.map((e) => `<div class="ep"><b>${esc(e.day)}</b> · <em>${esc(e.title)}</em><br><span>${esc(e.text)}</span></div>`).join('')}
+      <p class="copy">© ${new Date().getFullYear()} Dunia Impianmu · YouTube @DuniaImpianmu · IG & TikTok @dunia_impianmu<br>Game resmi hanya di <b>duniaimpianmu.my.id</b>. Hak cipta dilindungi: dilarang menyalin atau menerbitkan ulang tanpa izin.</p>`;
   } else if (menuTab === 'atur') {
     const seg = (id, opts, cur) => `<div class="seg" data-k="${id}">${opts.map(([v, l]) => `<button data-v="${v}" class="${String(v) === String(cur) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     h += `<h2>Pengaturan</h2>
@@ -874,15 +957,20 @@ const bm = { el: $('#bigmap'), cv: $('#bigmap canvas'), s: 10, cx: 0, cy: 8, sel
 const bctx = bm.cv.getContext('2d');
 const LABELS = Object.entries({ ...L.old, ...L.new }).filter(([k]) => INFO[k] && k !== 'ladang2').map(([k, v]) => ({ k, x: v[0], y: v[1] }));
 function openMap() { bm.el.classList.add('on'); fitMap(); drawMap(); releaseAll(); $('#mapInfo').style.display = 'none'; bm.sel = null; }
-function fitMap() { const w = innerWidth, h = innerHeight; bm.s = (Math.min(w, h) * 0.46) / (L.fence.r + 2); bm.cx = FC[0]; bm.cy = FC[1]; }
+function fitMap() {
+  const w = innerWidth, h = innerHeight, x0 = FC[0] - L.fence.r - 2, x1 = FC[0] + L.fence.r + 2, y1 = FC[1] + L.fence.r + 2, y0 = ZONE ? ZONE[2] - 1 : FC[1] - L.fence.r - 2;
+  const top = Math.max(60, $('#tpBar').getBoundingClientRect().bottom + 6), avail = h - top - 24;
+  bm.s = Math.min((w * 0.92) / (x1 - x0), avail / (y1 - y0)); bm.cx = (x0 + x1) / 2; bm.cy = (y0 + y1) / 2 + (top + avail / 2 - h / 2) / bm.s;
+}
 const W2S = (x, y) => [innerWidth / 2 + (x - bm.cx) * bm.s, innerHeight / 2 - (y - bm.cy) * bm.s];
 function drawMap() {
   const dpr = Math.min(devicePixelRatio, 2), w = innerWidth, h = innerHeight; bm.cv.width = w * dpr; bm.cv.height = h * dpr;
   const c = bctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#2b4a3a'; c.fillRect(0, 0, w, h);
   const [fx_, fy_] = W2S(FC[0], FC[1]);
   c.fillStyle = '#8fd06b'; c.beginPath(); c.arc(fx_, fy_, (L.fence.r + 0.5) * bm.s, 0, 7); c.fill();
+  if (ZONE) { const [a, b] = W2S(ZONE[0], GATE.y + 4), [d, e] = W2S(ZONE[1], ZONE[2]); c.beginPath(); c.roundRect(a, b, d - a, e - b, 2 * bm.s); c.fill(); }
   c.strokeStyle = '#4aa8e0'; c.lineWidth = 3.2 * bm.s; c.lineCap = 'round'; c.beginPath();
-  for (let y = -40; y <= 60; y += 1) { const [X, Y] = W2S(riverX(y), y); y === -40 ? c.moveTo(X, Y) : c.lineTo(X, Y); } c.stroke();
+  { const y0 = Math.max(-40, Math.ceil(RIVER_END)); for (let y = y0; y <= 60; y += 1) { const [X, Y] = W2S(riverX(y), y); y === y0 ? c.moveTo(X, Y) : c.lineTo(X, Y); } } c.stroke();
   c.strokeStyle = '#ead9ad';
   for (const [a, b, wd] of ROADS) { c.lineWidth = wd * bm.s; c.beginPath(); c.moveTo(...W2S(a[0], a[1])); c.lineTo(...W2S(b[0], b[1])); c.stroke(); }
   for (const it of L.items) {
@@ -891,6 +979,12 @@ function drawMap() {
     const [x0, x1, y0, y1] = o.c.b; if (x1 - x0 < 0.5) continue;
     c.save(); c.translate(...W2S(o.x, o.y)); c.rotate(-o.r);
     c.fillStyle = INFO[it.a] ? '#ffcf3a' : /^rumah/.test(it.a) ? '#e07a5f' : '#c9b9a6'; c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1;
+    c.fillRect(x0 * bm.s, -y1 * bm.s, (x1 - x0) * bm.s, (y1 - y0) * bm.s); c.strokeRect(x0 * bm.s, -y1 * bm.s, (x1 - x0) * bm.s, (y1 - y0) * bm.s); c.restore();
+  }
+  if (L.new.taman_safari) { const [sx, sy, sr] = L.new.taman_safari; c.save(); c.translate(...W2S(sx, sy)); c.rotate(-sr); c.fillStyle = '#d9c27a'; c.fillRect(-6.5 * bm.s, -5 * bm.s, 13 * bm.s, 10 * bm.s); c.restore(); }
+  for (const e of EXTRA) {
+    const [x0, x1, y0, y1] = e.b; c.save(); c.translate(...W2S(e.p[0], e.p[1])); c.rotate(-e.r);
+    const col = extraColor(e.k); if (!col) { c.restore(); continue; } c.fillStyle = col; c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1;
     c.fillRect(x0 * bm.s, -y1 * bm.s, (x1 - x0) * bm.s, (y1 - y0) * bm.s); c.strokeRect(x0 * bm.s, -y1 * bm.s, (x1 - x0) * bm.s, (y1 - y0) * bm.s); c.restore();
   }
   c.strokeStyle = '#7a4a1e'; c.lineWidth = Math.max(2, 0.25 * bm.s); c.beginPath(); c.arc(fx_, fy_, L.fence.r * bm.s, 0, 7); c.stroke();
@@ -903,6 +997,7 @@ function drawMap() {
     placed.push(r); c.fillStyle = bm.sel === lb.k ? '#ffd84a' : 'rgba(18,22,60,0.85)'; c.beginPath(); c.roundRect(r.x, r.y, r.w, r.h, 10); c.fill();
     c.fillStyle = bm.sel === lb.k ? '#2a1d00' : '#fff'; c.textBaseline = 'middle'; c.fillText(txt, X, r.y + th / 2 + 1); c.textBaseline = 'alphabetic';
   }
+  for (const [x, y, kd] of MARKS) { const [X, Y] = W2S(x, y); c.fillStyle = MARK_COL[kd] || '#ff5a3a'; c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(X, Y, 8, 0, 7); c.fill(); c.stroke(); }
   const [px, py] = W2S(P.x, P.y); c.save(); c.translate(px, py); c.rotate(-P.face + Math.PI);
   c.fillStyle = '#2f7cff'; c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -14); c.lineTo(10, 10); c.lineTo(0, 4); c.lineTo(-10, 10); c.closePath(); c.fill(); c.stroke(); c.restore();
   if (!bm.sel) { c.fillStyle = '#fff'; c.font = '600 13px Fredoka, sans-serif'; c.textAlign = 'left'; c.fillText('Panah biru = posisimu · ketuk nama bangunan untuk info', 14, h - 14); }
@@ -939,33 +1034,37 @@ $('#mini').addEventListener('click', openMap);
 const keys = {}, seen = {}, rep = {};
 const KEYMAP = { w: 'KeyW', a: 'KeyA', s: 'KeyS', d: 'KeyD' };
 const codeOf = (e) => KEYMAP[(e.key || '').toLowerCase()] || e.code;
-const ui = () => ['#photo', '#menu', '#bigmap', '#catch'].some((s) => $(s).classList.contains('on')) || !!$('#load') || !!talking;
+const ui = () => ['#photo', '#menu', '#bigmap', '#catch', '#shop'].some((s) => $(s).classList.contains('on')) || !!$('#load') || !!talking;
 const joy = { id: null, x0: 0, y0: 0, x: 0, y: 0 };
 const joyEl = $('#joy'), knob = joyEl.querySelector('i');
 const releaseAll = () => { for (const c in keys) { keys[c] = false; rep[c] = false; } joy.id = null; joy.x = joy.y = 0; joyEl.style.display = 'none'; };
 addEventListener('keydown', (e) => {
   if (e.target && e.target.tagName === 'INPUT') return;
   const c = codeOf(e); keys[c] = true; seen[c] = performance.now(); if (e.repeat) rep[c] = true;
-  if (e.code === 'Space') { if (!e.repeat) jump(); e.preventDefault(); }
-  if (e.repeat || $('#load')) return;
   const k = (e.key || '').toLowerCase();
+  if (e.code === 'Space') { e.preventDefault(); if (e.repeat || $('#load')) return;
+    if (talking) { dialogConfirm(); return; }
+    if ($('#catch').classList.contains('on')) { $('#catch').classList.remove('on'); return; }
+    jump(); return; }
+  if (e.repeat || $('#load')) return;
   if (talking) {
     if (['1', '2', '3', '4'].includes(k)) { if (typeT >= typeText.length) choose(+k - 1); }
     else if (k === 'arrowup' || k === 'w') moveSel(-1);
     else if (k === 'arrowdown' || k === 's') moveSel(1);
-    else if (k === 'e' || e.code === 'Enter') dialogConfirm();
+    else if (e.code === 'Enter') dialogConfirm();
     else if (k === 'escape') endTalk();
     return;
   }
   if (k === 'escape') { if ($('#menu').classList.contains('on')) closeMenu(); else if (bm.el.classList.contains('on')) bm.el.classList.remove('on'); else if ($('#catch').classList.contains('on')) $('#catch').classList.remove('on'); else openMenu(); return; }
   if ($('#catch').classList.contains('on') && (k === 'e' || e.code === 'Enter')) { $('#catch').classList.remove('on'); return; }
+  if ((k === 'm' || k === 'tab') && bm.el.classList.contains('on')) { e.preventDefault(); bm.el.classList.remove('on'); return; }
   if (ui()) return;
   if (k === 'e' || e.code === 'Enter') doAction();
   else if (k === 'p') takePhoto();
   else if (k === 'n') toggleNight();
   else if (k === 'r') cycleWeather();
   else if (k === 'c') cycleChar();
-  else if (k === 'm') setSound(!SND.on);
+  else if (k === 'm') openMap();
   else if (k === 'tab') { e.preventDefault(); openMap(); }
 });
 addEventListener('keyup', (e) => { for (const c of new Set([codeOf(e), e.code])) { keys[c] = false; rep[c] = false; } });
@@ -974,7 +1073,9 @@ addEventListener('contextmenu', releaseAll);
 document.addEventListener('visibilitychange', () => { if (document.hidden) { releaseAll(); pauseAudio(); } else resumeAudio(); });
 addEventListener('blur', pauseAudio); addEventListener('pagehide', pauseAudio);
 addEventListener('focus', resumeAudio); addEventListener('pointerdown', resumeAudio);
-function keyWatchdog() { const now = performance.now(); for (const c in keys) if (keys[c] && rep[c] && now - seen[c] > 600) { keys[c] = false; rep[c] = false; } }
+// (watchdog lama dihapus: OS menghentikan auto-repeat W saat tombol lain ditekan, jadi W dilepas padahal masih ditahan.
+//  Tombol macet sudah ditangani blur / visibilitychange / contextmenu.)
+function keyWatchdog() {}
 let camYaw = 0, camPitch = 0.42, camDist = 7.5;
 const drags = new Map();
 canvas.addEventListener('pointerdown', (e) => {
@@ -1015,6 +1116,270 @@ function cycleChar() { const i = CHARS.findIndex((c) => c.id === charId); setCha
 function jump() { if (P.z <= 0.001 && !ui()) { if (FISHING.state !== 'idle') stopFishing(); P.vz = 4.2; sfx('boing', 0.35, 1.1); } }
 let helpHidden = false; function hideHelp() { if (!helpHidden) { helpHidden = true; setTimeout(() => ($('#help').style.opacity = 0), 5000); } }
 
+// ------------------------------------------------------------------ toko (koin saku) & efek makanan
+const BOOST = { t: 0, k: 1, kind: '', puff: 0 };
+let shopId = null;
+function openShop(id) {
+  const sh = SHOPS[id]; if (!sh) return;
+  shopId = id; renderShop(); $('#shop').classList.add('on'); releaseAll(); sfx('pop_soft', 0.6);
+}
+function renderShop() {
+  const sh = SHOPS[shopId], el = $('#shop .card');
+  const fr = missionFree();
+  el.innerHTML = `<h3>${esc(sh.name)}</h3><div class="sk">🪙 Koinku: <b>${STATS.koin}</b></div><div class="slist">${fr ? `<button data-free="1" class="free"><span class="em">${fr[2]}</span><span class="nm">${esc(fr[1])}<small>${esc(fr[5])}</small></span><span class="pr">GRATIS</span></button>` : ''}${sh.items.map(([id, nm, em, price, kind, , ds], i) =>
+    `<button data-buy="${i}" class="${STATS.koin < price ? 'poor' : ''}"><span class="em">${em}</span><span class="nm">${esc(nm)}<small>${esc(ds)}${kind === 'barang' ? ` · di tas: ${STATS.bag[id] || 0}` : ''}</small></span><span class="pr">${price} 🪙</span></button>`).join('')}</div>
+    <div class="row"><button class="pbtn alt" id="shopClose">Tutup</button></div>`;
+}
+// item gratis khusus misi utama (selama misinya berjalan dan belum didapat)
+function missionFree() {
+  const m = curMain(), fr = m?.free?.[shopId]; if (!fr) return null;
+  if (m.goal.type === 'eat' && MS_.prog.set.includes(shopId)) return null;
+  if (fr[3] === 'barang' && (STATS.bag[fr[0]] || 0) > 0) return null;
+  return fr;
+}
+function takeFree() {
+  const fr = missionFree(); if (!fr) return;
+  const [id, nm, em, kind, eff] = fr; sfx('tring', 0.5);
+  if (kind === 'makan') { STATS.eaten++; saveStats(); $('#shop').classList.remove('on'); ev('eat', shopId); eat(nm, em, eff); }
+  else { STATS.bag[id] = (STATS.bag[id] || 0) + 1; saveStats(); toast(`🎯 ${em} ${nm} masuk tas! Antar sesuai misi`, 2.4); renderShop(); }
+}
+function buy(i) {
+  const [id, nm, em, price, kind, eff] = SHOPS[shopId].items[i];
+  if (STATS.koin < price) { toast('Koin kurang! Mancing dulu di sungai yuk 🎣', 2.2); sfx('boing', 0.4, 0.8); return; }
+  addKoin(-price); sfx('coin', 0.6); ev('buy', id);
+  if (kind === 'makan') { ev('eat', shopId); STATS.eaten++; saveStats(); $('#shop').classList.remove('on'); eat(nm, em, eff); }
+  else { STATS.bag[id] = (STATS.bag[id] || 0) + 1; saveStats(); toast(`${em} ${nm} masuk tas!`, 1.8); renderShop(); }
+}
+function eat(nm, em, eff) {
+  const p = body.position.clone(); p.y += avatarH + 0.2;
+  if (eff === 'pedas') { Object.assign(BOOST, { t: 15, k: 1.45, kind: 'pedas' }); toast(`${em} HAAAH PEDAAAS! Lari jadi kencang 15 detik!`, 2.6); sfx('whoosh', 0.6, 0.8); }
+  else if (eff === 'kuat') { Object.assign(BOOST, { t: 30, k: 1.25, kind: 'kuat' }); toast(`${em} Kenyang! Tenaga penuh 30 detik 💪`, 2.4); }
+  else toast(`${em} Nyam! ${nm} enak banget`, 2.0);
+  fx(heartTex, p, { n: 6, size: 0.2, speed: 0.5, up: 1.0, life: 1.2, grow: 0.3 }); sfx('pop_soft', 0.6, 1.2);
+}
+function updateBoost(dt) {
+  if (BOOST.t <= 0) return;
+  BOOST.t -= dt;
+  if (BOOST.kind === 'pedas' && (BOOST.puff -= dt) <= 0) {
+    BOOST.puff = 0.18; const p = body.position.clone(); p.y += avatarH * 0.9;
+    fx(puffTex, p, { n: 2, color: Math.random() < 0.5 ? 0xff5a3a : 0xffa040, size: 0.22, speed: 0.6, up: 1.4, life: 0.6, grow: 1.2 });
+  }
+  if (BOOST.t <= 0) { BOOST.k = 1; toast('Efeknya sudah habis', 1.4); }
+}
+$('#shop').addEventListener('click', (e) => {
+  if (e.target.closest('[data-free]')) { takeFree(); return; }
+  const b = e.target.closest('[data-buy]'); if (b) { buy(+b.dataset.buy); return; }
+  if (e.target.id === 'shopClose' || e.target === $('#shop')) { $('#shop').classList.remove('on'); sfx('pop_soft', 0.4); }
+});
+
+// ------------------------------------------------------------------ teleport (dari peta besar)
+$('#tpBar').innerHTML = TELEPORTS.map(([nm, em], i) => `<button data-tp="${i}">${em} ${esc(nm)}</button>`).join('');
+function teleport(i) {
+  const [nm, , x, y] = TELEPORTS[i];
+  bm.el.classList.remove('on'); $('#flash').style.transition = 'none'; $('#flash').style.opacity = 1;
+  [P.x, P.y] = collide(x, y, PR); P.z = 0; P.vz = 0; gZ = groundAt(P.x, P.y);
+  requestAnimationFrame(() => { $('#flash').style.transition = 'opacity .6s'; $('#flash').style.opacity = 0; });
+  sfx('shimmer', 0.5); toast(`✨ Sampai di ${nm}`, 1.8); ev('teleport');
+}
+$('#tpBar').addEventListener('pointerdown', (e) => e.stopPropagation());
+$('#tpBar').addEventListener('click', (e) => { const b = e.target.closest('[data-tp]'); if (b) teleport(+b.dataset.tp); });
+
+// ------------------------------------------------------------------ misi utama, misi harian, kerja sambilan (hadiah koin saku)
+const MS_ = (STATS.ms ??= { main: 0, prog: { p: 0, set: [] }, signs: [], badges: [], jobs: 0, jobCd: {} });
+const SIGNS5 = L.signs.map((sg, i) => ({ i, x: sg.p[0], y: sg.p[1] })).filter((sg) => sg.y < GATE.y - 1);
+const itemPos = (k) => { const it = L.items.find((i) => (i.d || i.a) === k); return it ? [it.p[0], it.p[1]] : null; };
+const curMain = () => MAIN_MISSIONS.list[MS_.main] || null;
+const dailyDef = (id) => DAILY_POOL.find((d) => d.id === id);
+const need = (g) => g.n || (g.type === 'eat' ? g.target.length : 1);
+function rollDaily() {
+  const d = new Date().toDateString(); if (STATS.daily?.date === d) return;
+  let h = 0; for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const pool = [...DAILY_POOL], pick = [];
+  while (pick.length < 3 && pool.length) { h = (h * 1103515245 + 12345) >>> 0; pick.push(pool.splice(h % pool.length, 1)[0].id); }
+  STATS.daily = { date: d, list: pick.map((id) => ({ id, p: 0, set: [], done: false })), bonus: false, dist0: STATS.dist };
+  saveStats();
+}
+rollDaily();
+function advance(g, rec, e, arg) {
+  const t = g.type; let ch = false;
+  if (t === 'visit' || t === 'give' || t === 'node') { if (e === t && arg === g.target && rec.p < 1) { rec.p = 1; ch = true; } }
+  else if (t === 'eat') { if (e === 'eat' && g.target.includes(arg) && !rec.set.includes(arg)) { rec.set.push(arg); rec.p = rec.set.length; ch = true; } }
+  else if (t === 'talkSeller') { if (e === 'talk' && /^(pedagang|penjual)/.test(arg) && !rec.set.includes(arg)) { rec.set.push(arg); rec.p = rec.set.length; ch = true; } }
+  else if (t === 'sign') { const n = MS_.signs.length; if (n !== rec.p) { rec.p = n; ch = true; } }
+  else if (t === 'walk') { const n = Math.floor(STATS.dist - STATS.daily.dist0); if (n !== rec.p) { rec.p = n; ch = n >= g.n; } }
+  else if (e === t) { rec.p++; ch = true; }
+  return ch;
+}
+function ev(e, arg) {
+  rollDaily();
+  const m = curMain();
+  if (m && advance(m.goal, MS_.prog, e, arg)) {
+    if (MS_.prog.p >= need(m.goal)) finishMain(m);
+    else if (e !== 'walk') toast(`🎯 ${m.title}: ${progText(m.goal, MS_.prog)}`, 1.8);
+  }
+  for (const d of STATS.daily.list) {
+    if (d.done) continue; const def = dailyDef(d.id); if (!def) continue;
+    if (advance(def.goal, d, e, arg) && d.p >= need(def.goal)) {
+      d.done = true; addKoin(def.koin); sfx('coin', 0.6); toast(`✅ Misi harian: ${def.title} · +${def.koin} 🪙`, 2.6);
+      if (!STATS.daily.bonus && STATS.daily.list.every((x) => x.done)) { STATS.daily.bonus = true; setTimeout(() => { addKoin(DAILY_BONUS); sfx('tring', 0.6); toast(`🌟 Semua misi harian selesai! Bonus +${DAILY_BONUS} 🪙`, 3); }, 2700); }
+    }
+  }
+  saveStats(); renderQuest();
+}
+function finishMain(m) {
+  MS_.main++; MS_.prog = { p: 0, set: [] }; addKoin(m.koin);
+  if (m.badge && !MS_.badges.includes(m.badge[0])) MS_.badges.push(m.badge[0]);
+  saveStats();
+  const box = $('#catch'); box.querySelector('.em').textContent = m.badge ? m.badge[1] : '🏆'; box.querySelector('h3').textContent = m.title;
+  const r = box.querySelector('.rar'); r.textContent = 'MISI SELESAI'; r.style.background = '#d99a00';
+  const nx = curMain();
+  box.querySelector('p').textContent = `+${m.koin} 🪙 Koin${m.badge ? ` · Lencana: ${m.badge[2]}` : ''}${nx ? ` · Misi berikutnya: ${nx.title}` : ' · Bab ini tamat! Tunggu misi baru di episode berikutnya'}`;
+  box.classList.add('on'); sfx('shimmer', 0.6); sfx('coin', 0.6); releaseAll();
+  setTimeout(() => ev('check'), 50);   // misi berikutnya mungkin sudah terpenuhi (mis. papan nama)
+}
+const progText = (g, rec) => g.type === 'walk' ? `${Math.min(rec.p, g.n)}/${g.n} m` : `${Math.min(rec.p, need(g))}/${need(g)}`;
+
+// kerja sambilan: titik berkilau + waktu
+const JOB = { id: null, t: 0, pts: [], done: [], got: 0 };
+const carryM = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1), new THREE.MeshStandardMaterial({ color: '#c8a050', roughness: 0.8 }));
+carryM.visible = false; body.add(carryM);
+function startJob(id) {
+  const j = JOBS[id]; if (!j) return;
+  if (JOB.id) { toast('Selesaikan dulu kerjaan yang sedang jalan!', 2); return; }
+  const cd = (MS_.jobCd[id] || 0) - Date.now(); if (cd > 0) { toast(`Istirahat dulu ya. Coba lagi ${Math.ceil(cd / 1000)} detik lagi`, 2.2); return; }
+  const pts = j.points === 'acak' ? Array.from({ length: j.n }, () => [j.area[0] + Math.random() * (j.area[1] - j.area[0]), j.area[2] + Math.random() * (j.area[3] - j.area[2])]) : j.points.map((q) => [...q]);
+  Object.assign(JOB, { id, t: j.time, pts, done: pts.map(() => false), got: 0, act: null, near: null });
+  toast(`${j.em} ${j.name} dimulai! Datangi sinar kuning, lalu ${touch ? 'ketuk tombol' : 'tekan E'}`, 2.6); sfx('tring', 0.5); renderQuest();
+}
+// aksi kerja: berdiri di titik, tekan E -> karakter bergerak bekerja + lingkaran loading di atas kepala
+function jobVerb() { const j = JOBS[JOB.id]; return Array.isArray(j.verb) ? j.verb[JOB.got % 2] : (j.verb || 'Kerjakan'); }
+function startAct() { const j = JOBS[JOB.id]; JOB.act = { i: JOB.near, t: 0, dur: j.act || 1.5, s: 0 }; promptEl.style.display = 'none'; sfx('pop_soft', 0.5, 0.9); }
+function finishAct() {
+  const j = JOBS[JOB.id], a = JOB.act, [x, y] = JOB.pts[a.i]; JOB.act = null; JOB.near = null; $('#jobBar').style.display = 'none';
+  JOB.done[a.i] = true; JOB.got++; sfx('pop_soft', 0.7, 1.3);
+  const pp = B2T(x, y, 0.8); fx(starTex, pp, { n: 8, color: 0xffd84a, size: 0.22, speed: 1.2, up: 1.4, life: 0.7 });
+  if (j.pair) { carryM.visible = JOB.got % 2 === 1; carryM.position.set(0, avatarH + 0.35, 0); toast(JOB.got % 2 ? '💰 Karung diangkat! Bawa ke Gudang Gold' : `✅ Diantar! (${JOB.got / 2}/${JOB.pts.length / 2})`, 1.6); }
+  else toast(`${j.em} ${j.label} ${JOB.got}/${JOB.pts.length}`, 1.2);
+  renderQuest();
+}
+function endJob(ok) {
+  const j = JOBS[JOB.id], id = JOB.id; JOB.id = null; JOB.act = null; JOB.near = null; carryM.visible = false; $('#jobBar').style.display = 'none';
+  if (ok) { MS_.jobs++; MS_.jobCd[id] = Date.now() + j.cd * 1000; addKoin(j.koin); sfx('coin', 0.7); sfx('tring', 0.5); toast(`${j.em} ${j.name} beres! +${j.koin} 🪙`, 2.6); ev('job', id); }
+  else { MS_.jobCd[id] = Date.now() + 10000; sfx('boing', 0.4, 0.7); toast('⏰ Waktu habis! Coba lagi sebentar lagi', 2.4); }
+  saveStats(); renderQuest();
+}
+function jobTargets() {
+  if (!JOB.id) return [];
+  const j = JOBS[JOB.id];
+  if (j.pair) { const i = JOB.done.indexOf(false); return i < 0 ? [] : [[...JOB.pts[i], i]]; }
+  return JOB.pts.map((q, i) => [...q, i]).filter((q) => !JOB.done[q[2]]);
+}
+// penanda tujuan (sinar + bintang)
+const beamMat = new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+const beamMatD = beamMat.clone(); beamMatD.color.set(0x5ad1ff);
+const beamGeo = new THREE.CylinderGeometry(0.16, 0.16, 7, 10, 1, true); beamGeo.translate(0, 3.5, 0);
+const bStarMat = new THREE.SpriteMaterial({ map: starTex, color: 0xffd84a, depthWrite: false, fog: false });
+const bStarMatD = bStarMat.clone(); bStarMatD.color.set(0x5ad1ff);
+const BEACONS = Array.from({ length: 14 }, () => { const g = new THREE.Group(), b = new THREE.Mesh(beamGeo, beamMat), st = new THREE.Sprite(bStarMat); st.scale.setScalar(0.45); g.add(b, st); g.visible = false; scene.add(g); return { g, b, st }; });
+const MARK_COL = { m: '#ff5a3a', d: '#2fa8e0' };
+let MARKS = [];
+function mainTargets() {
+  const m = curMain(); if (!m) return [];
+  const g = m.goal;
+  if (g.type === 'visit' && g.target === 'selatan') return [[GATE.x, GATE.y - 2]];
+  if (g.type === 'eat') { const k = { roti: 'penjual_roti', seblak: 'penjual_seblak', padang: 'penjual_padang' }; return g.target.filter((x) => !MS_.prog.set.includes(x)).map((x) => itemPos(k[x])).filter(Boolean); }
+  if (g.type === 'give') { const q = (STATS.bag.bola || 0) > 0 ? (charId === 'ucup' ? null : itemPos('ucup')) : itemPos('pedagang_mainan'); return q ? [q] : []; }
+  if (g.type === 'node') { const q = itemPos(g.target.split(':')[0]); return q ? [q] : []; }
+  if (g.type === 'job') return ['pedagang_sayur', 'penambang', 'penjaga_safari'].map(itemPos).filter(Boolean);
+  if (g.type === 'sign') return SIGNS5.filter((sg) => !MS_.signs.includes(sg.i)).map((sg) => [sg.x, sg.y]);
+  return [];
+}
+// tujuan misi harian 'kunjungi ...' yang belum selesai
+const VISIT_POS = { safari: 'taman_safari', stadion: 'stadion', tambang: 'tambang' };
+function nearestPos(list) { let b = null, bd = 1e9; for (const q of list) { if (!q) continue; const d = Math.hypot(P.x - q[0], P.y - q[1]); if (d < bd) { bd = d; b = q; } } return b; }
+function dailyTargets() {
+  const out = [], mg = curMain()?.goal;
+  for (const d of STATS.daily.list) {
+    if (d.done) continue; const g = dailyDef(d.id)?.goal; if (!g) continue;
+    if (g.type === 'visit') { const q = L.new[VISIT_POS[g.target]]; if (q) out.push([q[0], q[1], 'd']); }
+    else if (g.type === 'fish') { const q = nearestPos(SPOTS.map((s) => [s.x, s.y])); if (q) out.push([q[0], q[1], 'd']); }
+    else if (g.type === 'talkSeller' || g.type === 'buy') { const q = itemPos('pedagang_sayur'); if (q) out.push([q[0], q[1], 'd']); }
+    else if (g.type === 'job' && mg?.type !== 'job') for (const q of ['pedagang_sayur', 'penambang', 'penjaga_safari'].map(itemPos)) if (q) out.push([q[0], q[1], 'd']);
+  }
+  return out.filter((q, i) => out.findIndex((r) => Math.hypot(r[0] - q[0], r[1] - q[1]) < 1) === i);
+}
+let qT = 0;
+function updateMissions(dt) {
+  const t = performance.now() / 1000;
+  if (JOB.id && !ui()) {
+    const j = JOBS[JOB.id]; JOB.t -= dt;
+    if (JOB.act) {
+      const a = JOB.act; a.t += dt; a.s += dt;
+      if (a.s > 0.4) { a.s = 0; sfx('step', 0.3, 1.4 + Math.random() * 0.3); const [x, y] = JOB.pts[a.i]; fx(starTex, B2T(x, y, 0.5), { n: 2, color: 0xffe9a0, size: 0.12, speed: 0.6, up: 0.8, life: 0.5 }); }
+      const bar = $('#jobBar'), v = B2T(P.x, P.y, gZ + P.z + avatarH + 0.75).project(camera), k = Math.min(1, a.t / a.dur);
+      bar.style.display = v.z < 1 ? 'grid' : 'none'; bar.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; bar.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+      bar.style.setProperty('--k', (k * 360).toFixed(0) + 'deg'); bar.querySelector('b').textContent = j.em;
+      if (k >= 1) finishAct();
+    } else {
+      JOB.near = null; let bd = j.reach || 1.3;
+      for (const [x, y, i] of jobTargets()) { const d = Math.hypot(P.x - x, P.y - y); if (d < bd) { bd = d; JOB.near = i; } }
+    }
+    if (JOB.done.every(Boolean)) endJob(true); else if (JOB.t <= 0) endJob(false);
+  }
+  if ((qT += dt) > 0.35) {
+    qT = 0;
+    if (P.y < GATE.y - 2) ev('visit', 'selatan');
+    const sf = L.new.taman_safari; if (sf) { const dx = P.x - sf[0], dy = P.y - sf[1], c = Math.cos(-sf[2]), s_ = Math.sin(-sf[2]); if (Math.abs(dx * c - dy * s_) < 6.2 && Math.abs(dx * s_ + dy * c) < 4.7) ev('visit', 'safari'); }
+    if (L.new.stadion && Math.hypot(P.x - L.new.stadion[0], P.y - L.new.stadion[1]) < 9) ev('visit', 'stadion');
+    if (L.new.tambang && Math.hypot(P.x - L.new.tambang[0], P.y - L.new.tambang[1]) < 7) ev('visit', 'tambang');
+    for (const sg of SIGNS5) if (!MS_.signs.includes(sg.i) && Math.hypot(P.x - sg.x, P.y - sg.y) < 2.4) {
+      MS_.signs.push(sg.i); sfx('ding', 0.5); toast(`🪧 Papan nama ditemukan (${MS_.signs.length}/${SIGNS5.length})`, 2); ev('sign');
+    }
+    if (STATS.daily.list.some((d) => !d.done && dailyDef(d.id)?.goal.type === 'walk')) ev('walk');
+    MARKS = JOB.id ? jobTargets().map(([x, y]) => [x, y, 'm']) : mainTargets().map(([x, y]) => [x, y, 'm']).concat(dailyTargets()).slice(0, BEACONS.length);
+    if (JOB.id) renderQuest();
+  }
+  BEACONS.forEach((b, i) => {
+    const m = MARKS[i]; b.g.visible = !!m; if (!m) return;
+    const dm = m[2] === 'd'; b.b.material = dm ? beamMatD : beamMat; b.st.material = dm ? bStarMatD : bStarMat;
+    b.g.position.copy(B2T(m[0], m[1], 0)); b.st.position.y = 2.6 + Math.sin(t * 3 + i) * 0.25; b.st.material.rotation = t;
+  });
+}
+// kotak misi di layar (ketuk = buka tab Misi)
+function renderQuest() {
+  const el = $('#quest'); if (!el) return;
+  if (JOB.id) { const j = JOBS[JOB.id], n = j.pair ? JOB.pts.length / 2 : JOB.pts.length, got = j.pair ? Math.floor(JOB.got / 2) : JOB.got;
+    el.innerHTML = `<b>${j.em} ${esc(j.name)}</b><span>${got}/${n} ${esc(j.label)} · ⏱️ ${Math.max(0, Math.ceil(JOB.t))} dtk</span>`; el.classList.add('job'); return; }
+  el.classList.remove('job');
+  const m = curMain();
+  el.innerHTML = m ? `<b>🎯 ${esc(m.title)} <i>${progText(m.goal, MS_.prog)}</i></b><span>${esc(m.desc)}</span>` : `<b>🎯 Misi harian</b><span>${STATS.daily.list.filter((d) => d.done).length}/3 selesai · ketuk untuk lihat</span>`;
+}
+$('#quest').addEventListener('pointerdown', (e) => e.stopPropagation());
+$('#quest').addEventListener('click', () => openMenu('misi'));
+renderQuest();
+function missionMenuHTML() {
+  let h = `<h2>Misi</h2><p>Selesaikan misi untuk dapat 🪙 <b>Koin saku</b> (koinmu sekarang: <b>${STATS.koin}</b>). Koin saku bukan Gold kas negeri, jadi aman dari korupsi 😎</p>`;
+  h += `<h4>Misi Utama · ${esc(MAIN_MISSIONS.bab)}</h4>`;
+  MAIN_MISSIONS.list.forEach((m, i) => {
+    if (i < MS_.main) h += `<div class="mrow done"><span>✅ ${esc(m.title)}</span><b>+${m.koin} 🪙</b></div>`;
+    else if (i === MS_.main) { const k = Math.min(1, MS_.prog.p / need(m.goal)); h += `<div class="mrow cur"><span>🎯 ${esc(m.title)}<small>${esc(m.desc)}</small><em style="--k:${k}"></em></span><b>${progText(m.goal, MS_.prog)}<br>+${m.koin} 🪙</b></div>`; }
+    else h += `<div class="mrow lock"><span>🔒 ???</span><b>+${m.koin} 🪙</b></div>`;
+  });
+  if (MS_.main >= MAIN_MISSIONS.list.length) h += '<p>🎉 Bab ini tamat! Misi baru datang bersama episode berikutnya.</p>';
+  h += `<h4>Misi Harian · berganti setiap hari</h4>`;
+  for (const d of STATS.daily.list) { const def = dailyDef(d.id); if (!def) continue; const k = Math.min(1, d.p / need(def.goal));
+    h += `<div class="mrow ${d.done ? 'done' : 'cur'}"><span>${d.done ? '✅' : '⭐'} ${esc(def.title)}<em style="--k:${k}"></em></span><b>${progText(def.goal, d)}<br>+${def.koin} 🪙</b></div>`; }
+  h += `<div class="mrow ${STATS.daily.bonus ? 'done' : ''}"><span>🌟 Bonus semua misi harian</span><b>+${DAILY_BONUS} 🪙</b></div>`;
+  h += `<h4>Kerja Sambilan · bisa diulang</h4>`;
+  const giver = { panen: 'Pedagang Sayur (pasar)', angkut: 'Penambang (Tambang Gold)', pakan: 'Penjaga Safari' };
+  for (const [id, j] of Object.entries(JOBS)) { const cd = Math.max(0, Math.ceil(((MS_.jobCd[id] || 0) - Date.now()) / 1000));
+    h += `<div class="mrow"><span>${j.em} ${esc(j.name)}<small>${esc(j.desc)} · ${j.time} detik · tanya ${giver[id] || ''}${cd ? ` · istirahat ${cd} dtk` : ''}</small></span><b>+${j.koin} 🪙</b></div>`; }
+  h += `<h4>Lencana</h4><div class="grid">`;
+  for (const m of MAIN_MISSIONS.list.filter((x) => x.badge)) { const own = MS_.badges.includes(m.badge[0]);
+    h += own ? `<div class="tcard"><b>${m.badge[1]} ${esc(m.badge[2])}</b><small>${esc(m.title)}</small></div>` : `<div class="tcard locked"><b>???</b><small>Selesaikan misi utama</small></div>`; }
+  return h + `</div><div class="statrow" style="margin-top:10px"><span>💪 Kerja sambilan selesai</span><b>${MS_.jobs}</b></div>`;
+}
+
 // ------------------------------------------------------------------ peta kecil & info bangunan
 const mini = $('#mini'), mctx = mini.getContext('2d');
 const MS = 260 / 72, mx = (x) => 130 + (x - P.x) * MS, my = (y) => 130 - (y - P.y) * MS;
@@ -1022,20 +1387,21 @@ function drawMini() {
   mctx.clearRect(0, 0, 260, 260); mctx.save(); mctx.beginPath(); mctx.arc(130, 130, 130, 0, Math.PI * 2); mctx.clip();
   mctx.fillStyle = '#8fd06b'; mctx.fillRect(0, 0, 260, 260);
   mctx.strokeStyle = '#4aa8e0'; mctx.lineWidth = 3.2 * MS; mctx.beginPath();
-  for (let y = -40; y <= 60; y += 2) { const X = mx(riverX(y)), Y = my(y); y === -40 ? mctx.moveTo(X, Y) : mctx.lineTo(X, Y); } mctx.stroke();
+  { const y0 = Math.max(-40, Math.ceil(RIVER_END)); for (let y = y0; y <= 60; y += 2) { const X = mx(riverX(y)), Y = my(y); y === y0 ? mctx.moveTo(X, Y) : mctx.lineTo(X, Y); } } mctx.stroke();
   mctx.strokeStyle = '#e8d6a8'; mctx.lineCap = 'round';
   for (const [a, b, w] of ROADS) { mctx.lineWidth = w * MS; mctx.beginPath(); mctx.moveTo(mx(a[0]), my(a[1])); mctx.lineTo(mx(b[0]), my(b[1])); mctx.stroke(); }
   mctx.fillStyle = '#e07a5f';
-  for (const o of COLL) if (o.c.b && (o.c.b[1] - o.c.b[0]) > 1.2) { const s = Math.max(2.5, (o.c.b[1] - o.c.b[0]) * MS * 0.7); mctx.fillRect(mx(o.x) - s / 2, my(o.y) - s / 2, s, s); }
+  for (const o of COLL) if (o.c.b && (o.c.b[1] - o.c.b[0]) > 1.2) { mctx.fillStyle = o.k ? extraColor(o.k) : '#e07a5f'; if (!mctx.fillStyle || (o.k && !extraColor(o.k))) continue; const s = Math.max(2.5, (o.c.b[1] - o.c.b[0]) * MS * 0.7); mctx.fillRect(mx(o.x) - s / 2, my(o.y) - s / 2, s, s); }
   mctx.fillStyle = '#ffd84a';
   for (const lb of LABELS) { mctx.beginPath(); mctx.arc(mx(lb.x), my(lb.y), 5, 0, 7); mctx.fill(); }
   mctx.strokeStyle = 'rgba(120,70,20,0.8)'; mctx.lineWidth = 2; mctx.beginPath(); mctx.arc(mx(FC[0]), my(FC[1]), L.fence.r * MS, 0, 7); mctx.stroke();
+  for (const [x, y, kd] of MARKS) { const X = THREE.MathUtils.clamp(mx(x), 8, 252), Y = THREE.MathUtils.clamp(my(y), 8, 252); mctx.fillStyle = MARK_COL[kd] || '#ff5a3a'; mctx.strokeStyle = '#fff'; mctx.lineWidth = 3; mctx.beginPath(); mctx.arc(X, Y, 8, 0, 7); mctx.fill(); mctx.stroke(); }
   mctx.restore();
   mctx.save(); mctx.translate(130, 130); mctx.rotate(-P.face + Math.PI);
   mctx.fillStyle = '#2f7cff'; mctx.strokeStyle = '#fff'; mctx.lineWidth = 3; mctx.beginPath(); mctx.moveTo(0, -13); mctx.lineTo(9, 9); mctx.lineTo(0, 4); mctx.lineTo(-9, 9); mctx.closePath(); mctx.fill(); mctx.stroke();
   mctx.restore();
 }
-const BIG = { stadion: 9, tambang: 7, markas: 6, wisata: 7, teknologi: 6, hotel: 6, kantor_polisi: 5.5, balai_kota: 5.5 };
+const BIG = { stadion: 9, tambang: 7, markas: 6, wisata: 7, teknologi: 6, hotel: 6, kantor_polisi: 5.5, balai_kota: 5.5, taman_safari: 9, pasar: 5, sawah: 6, waduk: 6, bendungan: 5, pembangkit: 5, kios_roti: 2, kios_seblak: 2, kios_padang: 2 };
 const infoEl = $('#info'), POI = Object.entries({ ...L.old, ...L.new }).filter(([k]) => INFO[k]);
 let infoKey = null;
 function updateInfo() {
@@ -1050,7 +1416,7 @@ function updateInfo() {
 
 // ------------------------------------------------------------------ air & tanah
 const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
-const waterDepth = (x, y) => Math.max(0, Math.min(1, (1.6 - Math.abs(x - riverX(y))) / 0.7)) * 0.24;
+const waterDepth = (x, y) => y <= RIVER_END ? 0 : Math.max(0, Math.min(1, (1.6 - Math.abs(x - riverX(y))) / 0.7)) * 0.24;
 function groundAt(x, y) {
   if (BRIDGES.some((b) => Math.abs(x - b.x) < 3.5 && Math.abs(y - b.y) < 1.6)) {
     ray.set(B2T(x, y, 5), down); const hit = ray.intersectObjects(bridgeMeshes, false)[0];
@@ -1075,6 +1441,7 @@ let camCur = 7.5;
 const BOXES = L.items.filter((it) => it.c && it.c.b && it.h > 0.9).map((it) => ({ x: it.p[0], y: it.p[1], cos: Math.cos(-it.r), sin: Math.sin(-it.r), b: it.c.b, h: it.h }));
 for (const it of L.items) if (/^(pine|round)/.test(it.a) && it.h) { const r = 0.85 * it.s[0]; BOXES.push({ x: it.p[0], y: it.p[1], cos: 1, sin: 0, b: [-r, r, -r, r], h: it.h }); }
 BOXES.push({ x: GATE.x, y: GATE.y + 0.4, cos: 1, sin: 0, b: [-GATE.half - 0.4, GATE.half + 0.4, -0.3, 0.3], h: 4.6, gate: true });
+for (const e of EXTRA) if (e.h > 0.9 && e.k !== 'waduk') BOXES.push({ x: e.p[0], y: e.p[1], cos: Math.cos(-e.r), sin: Math.sin(-e.r), b: e.b, h: e.h });
 function camBlocked(target, dist) {
   const tx = target.x, ty = -target.z, tz = target.y;
   const dx = Math.sin(camYaw) * Math.cos(camPitch), dy = -Math.cos(camYaw) * Math.cos(camPitch), dz = Math.sin(camPitch);
@@ -1099,14 +1466,14 @@ function tick() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame
 function frame(dt) {
   const t = (simT += dt);
   keyWatchdog();
-  const lock = ui();
-  const ix = lock ? 0 : (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
-  const iy = lock ? 0 : (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
+  const lock = (ui() || !!JOB.act) && !CAP.input;
+  const ix = CAP.input ? CAP.input.x : lock ? 0 : (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
+  const iy = CAP.input ? CAP.input.y : lock ? 0 : (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
   const mag = Math.min(1, Math.hypot(ix, iy)), moving = mag > 0.08;
   if (moving && FISHING.state !== 'idle' && FISHING.state !== 'reel') stopFishing();
   const wet = gZ < -0.08 && P.z < 0.05;
   if (moving) {
-    const run = keys.ShiftLeft || keys.ShiftRight ? 1.6 : 1, swimK = 1 - 0.5 * Math.min(1, Math.max(0, -gZ) / 0.2), sp = 4.2 * mag * run * swimK / Math.max(1, Math.hypot(ix, iy));
+    const run = (CAP.input ? (CAP.input.run || 1) : keys.ShiftLeft || keys.ShiftRight ? 1.6 : 1) * (BOOST.t > 0 ? BOOST.k : 1), swimK = 1 - 0.5 * Math.min(1, Math.max(0, -gZ) / 0.2), sp = 4.2 * mag * run * swimK / Math.max(1, Math.hypot(ix, iy));
     const sy = Math.sin(camYaw), cy = Math.cos(camYaw);
     const vx = (-sy * iy + cy * ix) * sp, vy = (cy * iy + sy * ix) * sp, ox = P.x, oy = P.y;
     [P.x, P.y] = collide(P.x + vx * dt, P.y + vy * dt, PR);
@@ -1116,6 +1483,7 @@ function frame(dt) {
     if (stepPh > Math.PI) { stepPh -= Math.PI; if (P.z < 0.02) wet ? sfx('splash', 0.12, 1.3 + Math.random() * 0.3) : sfx('step', 0.35, 0.9 + Math.random() * 0.25); }
   } else walkPh *= 0.9;
   if (!lock) STATS.time += dt;
+  updateBoost(dt); updateMissions(dt);
   gZ = THREE.MathUtils.lerp(gZ, groundAt(P.x, P.y), Math.min(1, dt * 14));
   const wasAir = P.z > 0.05;
   P.vz -= 12 * dt; P.z = Math.max(0, P.z + P.vz * dt); if (P.z === 0) P.vz = Math.max(0, P.vz);
@@ -1135,6 +1503,8 @@ function frame(dt) {
   if (oldAv) { oldT += dt; const k = Math.min(1, oldT / 0.2); oldAv.scale.setScalar(Math.max(0.001, 1 - k)); oldAv.rotation.y = k * 6; if (k >= 1) { body.remove(oldAv); oldAv = null; } }
   if (charAnim < 1) { charAnim = Math.min(1, charAnim + dt / 0.5); const k = Math.max(0, (charAnim - 0.2) / 0.8), e = Math.max(0.001, k <= 0 ? 0 : easeOutBack(k)); avatar.scale.set(e / Math.sqrt(sq), e * sq, e / Math.sqrt(sq)); avatar.rotation.y = (1 - k) * Math.PI * 2; }
   else { avatar.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); avatar.rotation.y = 0; }
+  if (JOB.act) { const w = JOB.act.t; avatar.rotation.z = Math.sin(w * 14) * 0.12; avatar.rotation.x = 0.18 + Math.sin(w * 7) * 0.12; avatar.position.y = Math.abs(Math.sin(w * 9)) * 0.06; }
+  else if (avatar.rotation.z || avatar.rotation.x) { avatar.rotation.z = 0; avatar.rotation.x = 0; avatar.position.y = 0; }
   if (slimeNPC.g.visible) slimeNPC.g.position.y = Math.abs(Math.sin(t * 2.2)) * 0.05;
   for (const n of NPC) {
     n.t += n.sp * dt * n.dir; if (n.t > 1) { n.t = 1; n.dir = -1; } else if (n.t < 0) { n.t = 0; n.dir = 1; }
@@ -1156,6 +1526,7 @@ function frame(dt) {
   camCur = want < camCur ? THREE.MathUtils.lerp(camCur, want, Math.min(1, dt * 20)) : THREE.MathUtils.lerp(camCur, want, Math.min(1, dt * 3));
   camPos.set(target.x + Math.sin(camYaw) * Math.cos(camPitch) * camCur, target.y + Math.sin(camPitch) * camCur, target.z + Math.cos(camYaw) * Math.cos(camPitch) * camCur);
   camera.position.lerp(camPos, Math.min(1, dt * 8)); look.lerp(target, Math.min(1, dt * 10)); camera.lookAt(look);
+  if (CAP.cam) { camera.position.copy(B2T(...CAP.cam.pos)); camera.lookAt(B2T(...CAP.cam.look)); if (CAP.cam.fov) { camera.fov = CAP.cam.fov; camera.updateProjectionMatrix(); } }
   sun.position.copy(target).add(nCur > 0.5 ? MOON_OFF : SUN_OFF); sun.target.position.copy(target);
   updateFishing(dt, t); updateNear(dt);
   if (toastT > 0 && (toastT -= dt) <= 0) $('#toast').classList.remove('on');
@@ -1179,5 +1550,11 @@ for (const c of CHARS) {
 }
 pick.style.display = 'flex';
 addEventListener('beforeunload', saveStats);
-window.__game = { SND, STATS, SPOTS, CATS, FISHING, WX, renderer, P, scene, camera, keys, frame, doAction, startFishing, reel, takePhoto, toggleNight, setWeather, setCharacter, openMenu, openMap, egg, get dayT() { return dayT; }, set dayT(v) { dayT = v; }, cam: (y, p, d) => { camYaw = y ?? camYaw; camPitch = p ?? camPitch; camDist = d ?? camDist; } };
-tick();
+if (DEV) window.__game = { startJob, ev, JOB, SND, STATS, SPOTS, CATS, FISHING, WX, renderer, P, scene, camera, keys, frame, doAction, startFishing, reel, takePhoto, toggleNight, setWeather, setCharacter, openMenu, openMap, egg, get dayT() { return dayT; }, set dayT(v) { dayT = v; }, cam: (y, p, d) => { camYaw = y ?? camYaw; camPitch = p ?? camPitch; camDist = d ?? camDist; } };
+if (CAPTURE) {
+  // mode rekam: tanpa layar pilih karakter & tanpa loop otomatis; skrip luar memanggil __game.frame(dt)
+  setCharacter('slime'); $('#load').remove(); setWeather('cerah', false); applyGfx();
+  Object.assign(window.__game || {}, { CAP, FISHING, CATS, SPOTS, talk, choose, dialogConfirm, endTalk, TALKERS, setCharacter, startFishing, reel, takePhoto, setWeather, WX, camState: () => ({ camYaw, camPitch, camDist }), get talking() { return talking; }, get charId() { return charId; } });
+  window.__ready = true;
+} else tick();
+

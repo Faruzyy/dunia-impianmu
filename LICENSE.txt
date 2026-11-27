@@ -1,0 +1,16 @@
+Copyright (c) 2026 Dunia Impianmu (YouTube @DuniaImpianmu, Instagram & TikTok @dunia_impianmu).
+Hak cipta dilindungi undang-undang. All rights reserved.
+
+Kode, model 3D, audio, teks cerita, karakter (Slime Raja Kecil, Ucil, Ucup, dan lainnya),
+serta desain game "Dunia Impianmu" adalah milik pembuatnya.
+
+Kamu BOLEH:
+- Memainkan game ini secara gratis di https://duniaimpianmu.my.id
+- Merekam dan membagikan video gameplay dengan menyebut sumber (@dunia_impianmu).
+
+Kamu TIDAK BOLEH tanpa izin tertulis:
+- Menyalin, mengubah, atau menerbitkan ulang kode, aset, atau cerita game ini.
+- Membuat website, aplikasi, atau game tiruan yang memakai isi atau nama Dunia Impianmu.
+- Menjual atau memakai isi game ini untuk tujuan komersial.
+
+Kode library Three.js di folder vendor/three memakai lisensi MIT milik pembuat Three.js.
